@@ -3,8 +3,8 @@ import sys
 
 # Rewrite of blk_analyse
 
-from libbta.parser import parser_lttng as traceparser
-#from libbta.parser import parser_babeltrace as traceparser
+#from libbta.parser import parser_lttng as traceparser
+from libbta.parser import parser_babeltrace as traceparser
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
