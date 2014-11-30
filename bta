@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
+import sys
 
 # Rewrite of blk_analyse
 
-from lib.record import Record
+from libbta.parser import parser_lttng as traceparser
+#from libbta.parser import parser_babeltrace as traceparser
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        msg = 'Usage: python {} TRACEPATH'.format(sys.argv[0])
+        raise ValueError(msg)
+
+    traceparser.parse(sys.argv[1])
