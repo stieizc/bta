@@ -1,0 +1,5 @@
+[1417242320.116545202] (+?.?????????) debc qemu:virtio_blk_handle_read: { cpu_id = 3 }, { req = 0x7FF2B008B150, sector = 0, nsectors = 8 }
+[1417242320.116560014] (+0.000014812) debc qemu:bdrv_aio_readv: { cpu_id = 3 }, { bs = 0x7FF332A37A40, sector_num = 0, nb_sectors = 8, opaque = 0x7FF2B008B150 }
+[1417242320.116568693] (+0.000008679) debc qemu:bdrv_co_readv: { cpu_id = 3 }, { bs = 0x7FF332A3A9A0, sector_num = 0, nb_sector = 8 }
+[1417242320.190181748] (+0.073613055) debc qemu:paio_submit: { cpu_id = 0 }, { acb = 0x7FF2B006C680, opaque = 0x7FF324FBFC10, sector_num = 0, nb_sectors = 8, type = 1 }
+[1417242320.190211350] (+0.000029602) debc qemu:bdrv_co_io_em: { cpu_id = 0 }, { bs = 0x7FF332A3A9A0, sector_num = 0, nb_sectors = 8, is_write = 0, acb = 0x7FF2B0088250 }
