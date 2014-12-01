@@ -1,3 +1,5 @@
+from .layers import LayerTypes
+
 class Sorter:
     """
     From a list of events, generate requests for different layers.
@@ -27,4 +29,14 @@ class Sorter:
     """
 
     def __init__(self, layers):
-        self.layers = layers
+        self.layers = []
+        self.ids = []
+        self._gen_layers(layers)
+
+    def _gen_layers(self, layers):
+        upper = None
+        for name, typename, identifier in layers:
+            new = LayerTypes[typename](name, upper)
+            self.layers.append(new)
+            self.ids.append(identifier)
+            upper = new

@@ -43,23 +43,3 @@ class Request:
     @finish_time.setter
     def finish_time(self, timestamp):
         self.timestamps[Request.finish_time] = timestamp
-
-
-class Layer:
-    """
-    Layers contain requests. There is a hierarchy of layers:
-
-    Layer 0     domain0, domain1
-              --------------------
-                       |
-              --------------------
-                       |
-    Layer 2         domain0
-              --------------------
-
-    Events' host and domain are used for identifying their layers, these
-    identifiers must be unique between layers.
-    """
-
-    def __init__(self, identifiers):
-        self.identifiers = identifiers
