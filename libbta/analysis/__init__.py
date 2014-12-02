@@ -1,6 +1,3 @@
-from libbta import Event
-
-
 class Request:
     """
     Basic unit of analysis
@@ -9,37 +6,88 @@ class Request:
     different layers may be connected.
     """
 
-    add_time = 0
-    submit_time = 1
-    finish_time = 2
-
-    def __init__(self, name):
+    def __init__(self, name, attrs={}):
         self.name = name
+        self.attrs = attrs
         self.timestamps = {}
+
+    def __repr__(self):
+        return "{0}: {1} {2}".format(self.name, self.timestamps, self.attrs)
+
+    def get(self, attr_name):
+        return self.attrs[attr_name]
 
     @property
     def add_time(self):
         """Request add_time or none"""
-        return self.timestamps.get(Request.add_time)
+        return self.timestamps.get('add_time')
 
     @add_time.setter
     def add_time(self, timestamp):
-        self.timestamps[Request.add_time] = timestamp
+        self.timestamps['add_time'] = timestamp
 
     @property
     def submit_time(self):
         """Request is submitted for handling"""
-        return self.timestamps.get(Request.submit_time)
+        return self.timestamps.get('submit_time')
 
     @submit_time.setter
     def submit_time(self, timestamp):
-        self.timestamps[Request.submit_time] = timestamp
+        self.timestamps['submit_time'] = timestamp
 
     @property
     def finish_time(self):
         """Request has been handled"""
-        return self.timestamps.get(Request.finish_time)
+        return self.timestamps.get('finish_time')
 
     @finish_time.setter
     def finish_time(self, timestamp):
-        self.timestamps[Request.finish_time] = timestamp
+        self.timestamps['finish_time'] = timestamp
+
+
+class BlkRequest(Request):
+    """
+    Request for Block Service
+    """
+    @property
+    def offset(self):
+        return self.attrs['offset']
+
+    @offset.setter
+    def offset(self, offset):
+        self.attrs['offset'] = offset
+
+    @property
+    def length(self):
+        return self.attrs['length']
+
+    @length.setter
+    def length(self, length):
+        self.attrs['length'] = length
+
+
+class Layer:
+    """
+    Layers contain requests. There is a hierarchy of layers:
+
+    Layer 0     domain0, domain1
+              --------------------
+                       |
+              --------------------
+                       |
+    Layer 2         domain0
+              --------------------
+
+    Events' host and domain are used for identifying their layers, these
+    identifiers must be unique between layers.
+    """
+
+    def __init__(self, name, upper=None):
+        self.name = name
+        self.upper = upper
+
+    def __repr__(self):
+        string = self.name
+        if self.upper:
+            string += ": Upper {1}".format(self.upper.name)
+        return string
