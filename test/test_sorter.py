@@ -1,6 +1,6 @@
 import unittest
 
-from libbta.analysis.sorter import Sorter
+from libbta.sorter import Sorter
 
 
 class SorterTestCase(unittest.TestCase):

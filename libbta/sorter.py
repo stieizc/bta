@@ -1,4 +1,4 @@
-from .layers import LayerTypes
+from .layer.layers import LayerTypes
 
 class Sorter:
     """

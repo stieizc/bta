@@ -1,7 +1,7 @@
 import unittest, os
 
 from libbta.parser import parser_babeltrace as traceparser
-from libbta.analysis.qemu_virtio_layer import QemuVirtioLayer
+from libbta.layer.qemu_virtio_layer import QemuVirtioLayer
 
 class QemuVirtioLayerTestCase(unittest.TestCase):
     def setUp(self):
