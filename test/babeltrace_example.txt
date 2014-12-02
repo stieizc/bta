@@ -1,5 +1,25 @@
-[1417242320.116545202] (+?.?????????) debc qemu:virtio_blk_handle_read: { cpu_id = 3 }, { req = 0x7FF2B008B150, sector = 0, nsectors = 8 }
-[1417242320.116560014] (+0.000014812) debc qemu:bdrv_aio_readv: { cpu_id = 3 }, { bs = 0x7FF332A37A40, sector_num = 0, nb_sectors = 8, opaque = 0x7FF2B008B150 }
-[1417242320.116568693] (+0.000008679) debc qemu:bdrv_co_readv: { cpu_id = 3 }, { bs = 0x7FF332A3A9A0, sector_num = 0, nb_sector = 8 }
-[1417242320.190181748] (+0.073613055) debc qemu:paio_submit: { cpu_id = 0 }, { acb = 0x7FF2B006C680, opaque = 0x7FF324FBFC10, sector_num = 0, nb_sectors = 8, type = 1 }
-[1417242320.190211350] (+0.000029602) debc qemu:bdrv_co_io_em: { cpu_id = 0 }, { bs = 0x7FF332A3A9A0, sector_num = 0, nb_sectors = 8, is_write = 0, acb = 0x7FF2B0088250 }
+[1417440485.234089891] (+?.?????????) debc qemu:virtio_blk_handle_read: { cpu_id = 2 }, { req = 0x7FCBB008F660, sector = 0, nsectors = 8 }
+[1417440485.234107072] (+0.000017181) debc qemu:bdrv_aio_readv: { cpu_id = 2 }, { bs = 0x7FCC3155AA40, sector_num = 0, nb_sectors = 8, opaque = 0x7FCBB008F660 }
+[1417440485.234117146] (+0.000010074) debc qemu:bdrv_co_readv: { cpu_id = 2 }, { bs = 0x7FCC3155D9A0, sector_num = 0, nb_sector = 8 }
+[1417440485.234122882] (+0.000005736) debc qemu:paio_submit: { cpu_id = 2 }, { acb = 0x7FCBB0087DC0, opaque = 0x7FCC24546C10, sector_num = 0, nb_sectors = 8, type = 1 }
+[1417440485.234130944] (+0.000008062) debc qemu:bdrv_co_io_em: { cpu_id = 2 }, { bs = 0x7FCC3155D9A0, sector_num = 0, nb_sectors = 8, is_write = 0, acb = 0x7FCBB0067270 }
+[1417440485.234288982] (+0.000158038) debc qemu:handle_aiocb_rw: { cpu_id = 2 }, { aiocd__aio_offset = 0, aiocb__aio_nbytes = 4096, aiocb__aio_niov = 1 }
+[1417440485.234368089] (+0.000079107) debc qemu:virtio_blk_rw_complete: { cpu_id = 3 }, { req = 0x7FCBB008F660, ret = 0 }
+[1417440485.234383031] (+0.000014942) debc qemu:virtio_blk_req_complete: { cpu_id = 3 }, { req = 0x7FCBB008F660, status = 0, req__elem__in_num = 2 }
+[1417440485.281736313] (+0.047353282) debc qemu:virtio_blk_req_complete: { cpu_id = 2 }, { req = 0x7FCBB008F660, status = 0, req__elem__in_num = 2 }
+[1417440485.299039853] (+0.017303540) debc qemu:virtio_blk_handle_read: { cpu_id = 2 }, { req = 0x7FCBB008F660, sector = 41942912, nsectors = 8 }
+[1417440485.299046631] (+0.000006778) debc qemu:bdrv_aio_readv: { cpu_id = 2 }, { bs = 0x7FCC3155AA40, sector_num = 41942912, nb_sectors = 8, opaque = 0x7FCBB008F660 }
+[1417440485.299054799] (+0.000008168) debc qemu:bdrv_co_readv: { cpu_id = 2 }, { bs = 0x7FCC3155D9A0, sector_num = 41942912, nb_sector = 8 }
+[1417440485.299060179] (+0.000005380) debc qemu:paio_submit: { cpu_id = 2 }, { acb = 0x7FCBB0087D80, opaque = 0x7FCC24546C10, sector_num = 41942912, nb_sectors = 8, type = 1 }
+[1417440485.299069280] (+0.000009101) debc qemu:bdrv_co_io_em: { cpu_id = 2 }, { bs = 0x7FCC3155D9A0, sector_num = 41942912, nb_sectors = 8, is_write = 0, acb = 0x7FCBB0067350 }
+[1417440485.299127436] (+0.000058156) debc qemu:handle_aiocb_rw: { cpu_id = 1 }, { aiocd__aio_offset = 4294901760, aiocb__aio_nbytes = 4096, aiocb__aio_niov = 1 }
+[1417440485.366446045] (+0.067318609) debc qemu:virtio_blk_rw_complete: { cpu_id = 3 }, { req = 0x7FCBB008F660, ret = 0 }
+[1417440485.366452846] (+0.000006801) debc qemu:virtio_blk_req_complete: { cpu_id = 3 }, { req = 0x7FCBB008F660, status = 0, req__elem__in_num = 2 }
+[1417440485.375396400] (+0.008943554) debc qemu:virtio_blk_handle_read: { cpu_id = 2 }, { req = 0x7FCBB008F660, sector = 41943024, nsectors = 8 }
+[1417440485.375427214] (+0.000030814) debc qemu:bdrv_aio_readv: { cpu_id = 2 }, { bs = 0x7FCC3155AA40, sector_num = 41943024, nb_sectors = 8, opaque = 0x7FCBB008F660 }
+[1417440485.375439422] (+0.000012208) debc qemu:bdrv_co_readv: { cpu_id = 2 }, { bs = 0x7FCC3155D9A0, sector_num = 41943024, nb_sector = 8 }
+[1417440485.375446819] (+0.000007397) debc qemu:paio_submit: { cpu_id = 2 }, { acb = 0x7FCBB0087D40, opaque = 0x7FCC24546C10, sector_num = 41943024, nb_sectors = 8, type = 1 }
+[1417440485.375468739] (+0.000021920) debc qemu:bdrv_co_io_em: { cpu_id = 2 }, { bs = 0x7FCC3155D9A0, sector_num = 41943024, nb_sectors = 8, is_write = 0, acb = 0x7FCBB0088090 }
+[1417440485.375485587] (+0.000016848) debc qemu:handle_aiocb_rw: { cpu_id = 1 }, { aiocd__aio_offset = 4294959104, aiocb__aio_nbytes = 4096, aiocb__aio_niov = 1 }
+[1417440485.383644480] (+0.008158893) debc qemu:virtio_blk_rw_complete: { cpu_id = 3 }, { req = 0x7FCBB008F660, ret = 0 }
+[1417440485.383652007] (+0.000007527) debc qemu:virtio_blk_req_complete: { cpu_id = 3 }, { req = 0x7FCBB008F660, status = 0, req__elem__in_num = 2 }
