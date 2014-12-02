@@ -22,7 +22,6 @@ def parse(infile):
     with open(infile, encoding='utf-8') as tracefile:
         for line in tracefile:
             e = parseline(line)
-            print(e)
             events.append(e)
     return events
 
@@ -34,7 +33,7 @@ def parseline(line):
     attrs = {}
 
     m = meta_pattern.match(meta)
-    timestamp = m.group('timestamp')
+    timestamp = float(m.group('timestamp'))
     name = m.group('name')
     for a in ['host', 'scope']:
         attrs[a] = m.group(a)
