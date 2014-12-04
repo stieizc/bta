@@ -30,19 +30,21 @@ def parseline(line):
     Generate event from line
     """
     meta, _, attr = line.rpartition(':')
-    attrs = {}
 
     m = meta_pattern.match(meta)
     timestamp = float(m.group('timestamp'))
     name = m.group('name')
+
+    event = Event(name, timestamp)
+
     for a in ['host', 'scope']:
-        attrs[a] = m.group(a)
+        event[a] = m.group(a)
 
     key_vals = attr_split.split(attr.strip())
     for key_val in key_vals:
         if not key_val:
             continue
         m = key_val_pattern.match(key_val)
-        attrs[m.group(1)] = m.group(2)
+        event[m.group(1)] = m.group(2)
 
-    return Event(name, timestamp, attrs)
+    return event

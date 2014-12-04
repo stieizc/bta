@@ -2,10 +2,10 @@ class Event:
     """
     Basic unit of a trace file and an analysis
     """
-    def __init__(self, name, timestamp, attrs = {}):
+    def __init__(self, name, timestamp):
         self.name = name
         self.timestamp = timestamp
-        self.attrs = attrs
+        self.attrs = {}
 
     def __repr__(self):
         """
@@ -13,20 +13,11 @@ class Event:
         """
         return "{0} {1} {2}".format(self.name, self.timestamp, self.attrs)
 
-    def get(self, attr_name):
-        return self.attrs[attr_name]
+    def __getitem__(self, key):
+        return self.attrs[key]
 
-    def get_int(self, attr_name):
-        """
-        Convert attr to int before return
-        """
-        return int(self.attrs[attr_name])
-
-    def get_float(self, attr_name):
-        """
-        Convert attr to float before return
-        """
-        return int(self.attrs[attr_name])
+    def __setitem__(self, key, value):
+        self.attrs[key] = value
 
 
 class Request:
@@ -37,43 +28,54 @@ class Request:
     different layers may be connected.
     """
 
-    def __init__(self, name, attrs={}):
+    def __init__(self, name):
         self.name = name
-        self.attrs = attrs
-        self.timestamps = {}
+        self.attrs = {}
 
     def __repr__(self):
         return "{0}: {1} {2}".format(self.name, self.timestamps, self.attrs)
 
-    def get(self, attr_name):
-        return self.attrs[attr_name]
+    def __getitem__(self, key):
+        return self.attrs[key]
+
+    def __setitem__(self, key, value):
+        self.attrs[key] = value
+
+    def get_event_attrs(self, event, attrs_map):
+        for r_attr, e_attr in attrs_map:
+            self[r_attr] = event[e_attr]
+
+    @property
+    def timestamps(self):
+        """Get timestamps"""
+        return {k: self[k] for k in ['add_time', 'submit_time', 'finish_time']}
 
     @property
     def add_time(self):
         """Request add_time or none"""
-        return self.timestamps.get('add_time')
+        return self['add_time']
 
     @add_time.setter
     def add_time(self, timestamp):
-        self.timestamps['add_time'] = timestamp
+        self['add_time'] = timestamp
 
     @property
     def submit_time(self):
         """Request is submitted for handling"""
-        return self.timestamps.get('submit_time')
+        return self['submit_time']
 
     @submit_time.setter
     def submit_time(self, timestamp):
-        self.timestamps['submit_time'] = timestamp
+        self['submit_time'] = timestamp
 
     @property
     def finish_time(self):
         """Request has been handled"""
-        return self.timestamps.get('finish_time')
+        return self['finish_time']
 
     @finish_time.setter
     def finish_time(self, timestamp):
-        self.timestamps['finish_time'] = timestamp
+        self['finish_time'] = timestamp
 
 
 class BlkRequest(Request):

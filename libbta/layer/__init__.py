@@ -1,3 +1,6 @@
+from libbta import BlkRequest
+
+
 class Layer:
     """
     Layers contain requests. There is a hierarchy of layers:
@@ -23,3 +26,20 @@ class Layer:
         if self.upper:
             string += ": Upper {1}".format(self.upper.name)
         return string
+
+
+class BlkLayer(Layer):
+    """
+    Block Layer
+    """
+    def __init__(self, name, req_attrs_map, upper=None):
+        super().__init__(name, upper)
+        self.req_attrs_map = req_attrs_map
+
+    def gen_req(self, name, event):
+        req = BlkRequest(name)
+        req.get_event_attrs(event, self.req_attrs_map)
+        req.offset = int(req.offset)
+        req.length = int(req.length)
+        req.add_time = event.timestamp
+        return req
