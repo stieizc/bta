@@ -38,6 +38,9 @@ class Request:
     def __getitem__(self, key):
         return self.attrs[key]
 
+    def get(self, key):
+        return self.attrs.get(key)
+
     def __setitem__(self, key, value):
         self.attrs[key] = value
 
@@ -48,7 +51,7 @@ class Request:
     @property
     def timestamps(self):
         """Get timestamps"""
-        return {k: self[k] for k in ['add_time', 'submit_time', 'finish_time']}
+        return {k: self.get(k) for k in ['add_time', 'submit_time', 'finish_time']}
 
     @property
     def add_time(self):
