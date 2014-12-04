@@ -8,14 +8,13 @@ class QemuVirtioLayer(BlkLayer):
     Layer for Qemu's Virtio
 
     Read and Write event have different add and submit operations, but same
-    finish operation, thus they have separate added queues, but same submit and
-    finish queue
+    finish operation. They have separate added queues, but same submit and
+    finish queue.
     """
-    def __init__(self, name, upper=None):
+    def __init__(self, name):
         super().__init__(name,
                          [('id', 'req'), ('offset', 'sector'),
-                          ('length', 'nsectors')],
-                         upper)
+                          ('length', 'nsectors')])
         self.added_write_reqs = deque()
         self.added_read_reqs = deque()
         self.submitted_reqs = deque()
@@ -52,23 +51,22 @@ class QemuVirtioLayer(BlkLayer):
         Read a event, generate a write request
         """
         req = self.gen_req('qemu_virtio_write', event, is_write=1)
-        self.added_write_reqs.append(req)
+        self._add_req(req, event, self.added_write_reqs)
 
     def add_read_request(self, event):
         """
         Read a event, generate a read request
         """
         req = self.gen_req('qemu_virtio_read', event, is_write=0)
-        self.added_read_reqs.append(req)
+        self._add_req(req, event, self.added_read_reqs)
 
     def submit_write_request(self, event):
         """
         Read a event, submit some write requests
         """
-        for i in range(event['num_callbacks']):
+        for i in range(int(event['num_callbacks'])):
             req = self.added_write_reqs.popleft()
-            req.submit_time = event.timestamp
-            self.submitted_reqs.append(req)
+            self._submit_req(req, event, self.submitted_reqs)
 
     def submit_read_request(self, event):
         """
@@ -80,8 +78,7 @@ class QemuVirtioLayer(BlkLayer):
                             range(len(self.added_read_reqs))):
             if req.offset == offset and req.length == length:
                 del self.added_read_reqs[idx]
-                req.submit_time = event.timestamp
-                self.submitted_reqs.append(req)
+                self._submit_req(req, event, self.submitted_reqs)
                 return
         print("Throw event {0}".format(event))
 
@@ -91,8 +88,7 @@ class QemuVirtioLayer(BlkLayer):
                             range(len(self.submitted_reqs))):
             if req['id'] == _id:
                 del self.submitted_reqs[idx]
-                req.finish_time = event.timestamp
-                self.finished_reqs.append(req)
+                self._finish_req(req, event, self.finished_reqs)
                 return
         print("Throw event {0}".format(event))
 

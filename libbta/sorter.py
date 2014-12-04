@@ -36,7 +36,7 @@ class Sorter:
     def _gen_layers(self, layers):
         upper = None
         for name, typename, identifier in layers:
-            new = LayerTypes[typename](name, upper)
+            new = LayerTypes[typename](name)
             self.layers.append(new)
             self.ids.append(identifier)
             upper = new
