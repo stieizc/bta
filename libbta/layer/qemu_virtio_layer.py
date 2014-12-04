@@ -1,6 +1,7 @@
 from collections import deque
 
-from . import BlkRequest, Layer
+from libbta import BlkRequest
+from . import Layer
 
 
 class QemuVirtioLayer(Layer):

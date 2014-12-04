@@ -1,6 +1,6 @@
 import unittest
 
-from libbta.layer import Request
+from libbta import Request
 
 class RequestTestCase(unittest.TestCase):
     def setUp(self):
