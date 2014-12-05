@@ -1,20 +1,24 @@
-import unittest
+import unittest, os
 
 from libbta.sorter import Sorter
+from libbta.parser import parser_babeltrace as traceparser
+from libbta.layer.qemu_virtio_layer import QemuVirtioLayer
+from libbta.layer.qemu_raw_layer import QemuRawLayer
+from libbta.layer.deducers import VirtioRawDeducer
 
 
 class SorterTestCase(unittest.TestCase):
     def setUp(self):
-        self.args = [('qemu_virtio_req', 'qemu_virtio', {'host': 'debc',
-                      'domain': 'qemu', 'type': 'virtio'}),
-                     ('qemu_raw_req', 'qemu_virtio', {'host': 'debc',
-                      'domain': 'qemu', 'type': 'raw'})]
-        self.sorter = Sorter(self.args)
+        self.infile = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                   'babeltrace_example.txt')
+        self.events = traceparser.parse(self.infile)
+        self.upper = QemuVirtioLayer('QemuVirtioLayer')
+        self.lower = QemuRawLayer('QemuRawLayer')
+        self.deducer = VirtioRawDeducer(self.upper, self.lower)
+        self.sorter = Sorter([(self.upper, ['debc.qemu']),
+                              (self.lower, ['debc.qemu'])])
+        self.sorter.read_events(self.events)
 
-    def test_name(self):
-        for layer, arg in zip(self.sorter.layers, self.args):
-            self.assertEqual(layer.name, arg[0], 'Layer Name Failed')
-
-    def test_id(self):
-        for _id, arg in zip(self.sorter.ids, self.args):
-            self.assertEqual(_id, arg[2], 'Layer Identifier Failed')
+    def test_print(self):
+        print()
+        print(self.sorter)

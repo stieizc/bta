@@ -1,5 +1,3 @@
-from .layer.layers import LayerTypes
-
 class Sorter:
     """
     From a list of events, generate requests for different layers.
@@ -28,15 +26,19 @@ class Sorter:
     layer, or associated with one or more "submitted" requests from upper layer
     """
 
-    def __init__(self, layers):
-        self.layers = []
+    def __init__(self, layermap):
+        self.layermap = layermap
         self.ids = []
-        self._gen_layers(layers)
 
-    def _gen_layers(self, layers):
-        upper = None
-        for name, typename, identifier in layers:
-            new = LayerTypes[typename](name)
-            self.layers.append(new)
-            self.ids.append(identifier)
-            upper = new
+    def __repr__(self):
+        string = '\n'.join([str(l) for l in self.layermap])
+        return string
+
+    def read_events(self, events):
+        for event in events:
+            self.dispatch(event)
+
+    def dispatch(self, event):
+        for layer, domains in self.layermap:
+            if event['domain'] in domains:
+                layer.read_event(event)

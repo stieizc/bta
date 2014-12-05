@@ -49,7 +49,7 @@ class QemuRawLayer(BlkLayer):
         """
         req = self.gen_req('qemu_raw_rw', event)
         if req.type == 'read' or req.type == 'write':
-            self._add_req(req, event, self.added_reqs)
+            self._add_req(req, event.timestamp, self.added_reqs)
 
     def submit_request(self, event):
         """
@@ -60,14 +60,13 @@ class QemuRawLayer(BlkLayer):
                             range(len(self.added_reqs))):
             if req['id'] == _id:
                 del self.added_reqs[idx]
-                self._submit_req(req, event, self.submitted_reqs)
+                self._submit_req(req, event.timestamp, self.submitted_reqs)
                 return
         print("Throw event {0}".format(event))
 
-    def finish_request(self, idx, timestamp):
-        req = self.submitted_reqs[idx]
-        del self.submitted_reqs[idx]
-        self._finish_req(req, event, self.finished_reqs)
+    def finish_request(self, req, timestamp):
+        self.submitted_reqs.remove(req)
+        self._finish_req(req, timestamp, self.finished_reqs)
 
     def gen_req(self, name, event):
         req = super().gen_req(name, event)

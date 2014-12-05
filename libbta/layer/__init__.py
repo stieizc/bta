@@ -22,20 +22,19 @@ class Layer:
         self.upper = None
         self.lower = None
 
-    def _add_req(self, req, event, queue):
-        req.add_time = event.timestamp
-        queue.append(req)
-        self.notice_all_deducer(req, 'add')
+    def _add_req(self, req, timestamp, queue):
+        self._handle_req(req, timestamp, queue, 'add')
 
-    def _submit_req(self, req, event, queue):
-        req.submit_time = event.timestamp
-        queue.append(req)
-        self.notice_all_deducer(req, 'submit')
+    def _submit_req(self, req, timestamp, queue):
+        self._handle_req(req, timestamp, queue, 'submit')
 
-    def _finish_req(self, req, event, queue):
-        req.finish_time = event.timestamp
+    def _finish_req(self, req, timestamp, queue):
+        self._handle_req(req, timestamp, queue, 'finish')
+
+    def _handle_req(self, req, timestamp, queue, event_type):
+        req[event_type + '_time'] = timestamp
         queue.append(req)
-        self.notice_all_deducer(req, 'finish')
+        self.notice_all_deducer(req, event_type)
 
     def add_upper_deducer(self, upper):
         self.upper = upper
@@ -47,23 +46,21 @@ class Layer:
         self.notice_upper_deducer(req, event_type)
         self.notice_lower_deducer(req, event_type)
 
+    # Notice the reverse of layer position here
     def notice_upper_deducer(self, req, event_type):
         if self.upper:
-            self.notice_layer(self.upper, req, event_type, 'upper')
+            self.notice(self.upper, req, event_type, 'lower')
 
     def notice_lower_deducer(self, req, event_type):
         if self.lower:
-            self.notice_layer(self.lower, req, event_type, 'lower')
+            self.notice(self.lower, req, event_type, 'upper')
 
     @staticmethod
-    def notice_deducer(deducer, req, event_type, layer):
+    def notice(deducer, req, event_type, layer):
         deducer.deduce(req, event_type, layer)
 
     def __repr__(self):
-        string = self.name
-        if self.upper:
-            string += ": Upper {1}".format(self.upper.name)
-        return string
+        return self.name
 
 
 class BlkLayer(Layer):
@@ -88,10 +85,19 @@ class Deducer:
     """
     def __init__(self, upper, lower):
         self.layers = {'upper': upper, 'lower': lower}
+        self.deduce_funcs = {'upper': {}, 'lower': {}}
         upper.add_lower_deducer(self)
         lower.add_upper_deducer(self)
 
-    def deduce(self, req, event_type, which_layer):
-        layer = self.layers[which_layer]
-        deduce_func = getattr(self, 'deduce_' + event_type)
-        deduce_func(req, layer)
+    def deduce(self, req, event_type, layer_to_search):
+        deduce_func = self.deduce_funcs[layer_to_search].get(event_type)
+        if deduce_func:
+            deduce_func(self, req)
+
+    @property
+    def upper(self):
+        return self.layers['upper']
+
+    @property
+    def lower(self):
+        return self.layers['lower']
