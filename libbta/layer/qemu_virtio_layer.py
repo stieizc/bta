@@ -22,8 +22,6 @@ class QemuVirtioLayer(BlkLayer):
         self.submitted_reqs = deque()
         self.finished_reqs = deque()
 
-        self.issued_reqs = self.submitted_reqs
-
     def __repr__(self):
         string = '\n'.join([super().__repr__(),
                             'Added write: ' + str(self.added_write_reqs),
@@ -52,14 +50,14 @@ class QemuVirtioLayer(BlkLayer):
         """
         Read a event, generate a write request
         """
-        req = self.gen_req('qemu_virtio_write', event, is_write=1)
+        req = self.gen_req('qemu_virtio_write', event, 'write')
         self._add_req(req, event, self.added_write_reqs)
 
     def add_read_request(self, event):
         """
         Read a event, generate a read request
         """
-        req = self.gen_req('qemu_virtio_read', event, is_write=0)
+        req = self.gen_req('qemu_virtio_read', event, 'read')
         self._add_req(req, event, self.added_read_reqs)
 
     def submit_write_request(self, event):
@@ -94,9 +92,9 @@ class QemuVirtioLayer(BlkLayer):
                 return
         print("Throw event {0}".format(event))
 
-    def gen_req(self, name, event, is_write=1):
+    def gen_req(self, name, event, _type):
         req = super().gen_req(name, event)
         req.offset *= self.SECTOR_SIZE
         req.length *= self.SECTOR_SIZE
-        req['is_write'] = is_write
+        req.type = _type
         return req

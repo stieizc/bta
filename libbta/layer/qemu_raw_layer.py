@@ -11,8 +11,7 @@ class QemuRawLayer(BlkLayer):
     on finish. So it relies on the deducer to find a relationship, and mark it
     as finished. So finish_request is actually called by deducer.
     """
-    QEMU_AIO_READ = 1
-    QEMU_AIO_WRITE = 2
+    TYPE = {'1': 'read', '2':'write'}
 
     SECTOR_SIZE = 512
 
@@ -48,9 +47,8 @@ class QemuRawLayer(BlkLayer):
         """
         Read a event, generate a request
         """
-        _type = int(event['type'])
-        if _type == self.QEMU_AIO_READ or _type == self.QEMU_AIO_WRITE:
-            req = self.gen_req('qemu_raw_rw', event)
+        req = self.gen_req('qemu_raw_rw', event)
+        if req.type == 'read' or req.type == 'write':
             self._add_req(req, event, self.added_reqs)
 
     def submit_request(self, event):
@@ -75,4 +73,5 @@ class QemuRawLayer(BlkLayer):
         req = super().gen_req(name, event)
         req.offset *= self.SECTOR_SIZE
         req.length *= self.SECTOR_SIZE
+        req.type = self.TYPE.get(req.type, req.type)
         return req

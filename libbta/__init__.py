@@ -31,6 +31,8 @@ class Request:
     def __init__(self, name):
         self.name = name
         self.attrs = {}
+        self.upper_reqs = []
+        self.lower_reqs = []
 
     def __repr__(self):
         return "{0}: {1} {2}".format(self.name, self.timestamps, self.attrs)
@@ -48,10 +50,17 @@ class Request:
         for r_attr, e_attr in attrs_map:
             self[r_attr] = event[e_attr]
 
+    def add_upper_req(self, req):
+        self.upper_reqs.append(req)
+
+    def add_lower_req(self, req):
+        self.lower_reqs.append(req)
+
     @property
     def timestamps(self):
         """Get timestamps"""
-        return {k: self.get(k) for k in ['add_time', 'submit_time', 'finish_time']}
+        return {k: self.get(k) for k in ['add_time', 'submit_time',
+                                         'finish_time']}
 
     @property
     def add_time(self):
@@ -100,3 +109,18 @@ class BlkRequest(Request):
     @length.setter
     def length(self, length):
         self.attrs['length'] = length
+
+    @property
+    def type(self):
+        return self.attrs['type']
+
+    @type.setter
+    def type(self, _type):
+        self.attrs['type'] = _type
+
+    @property
+    def end(self):
+        return self.offset + self.length - 1
+
+    def contains(self, req):
+        return self.offset <= req.offset and self.end >= req.end
