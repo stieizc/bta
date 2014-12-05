@@ -87,7 +87,11 @@ class Deducer:
     Deduce the relationship between requests from lower and upper layers.
     """
     def __init__(self, upper, lower):
-        self.upper = upper
-        self.lower = lower
+        self.layers = {'upper': upper, 'lower': lower}
         upper.add_lower_deducer(self)
         lower.add_upper_deducer(self)
+
+    def deduce(self, req, event_type, which_layer):
+        layer = self.layers[which_layer]
+        deduce_func = getattr(self, 'deduce_' + event_type)
+        deduce_func(req, layer)
