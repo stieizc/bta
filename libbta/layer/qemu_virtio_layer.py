@@ -11,6 +11,8 @@ class QemuVirtioLayer(BlkLayer):
     finish operation. They have separate added queues, but same submit and
     finish queue.
     """
+    SECTOR_SIZE = 512
+
     def __init__(self, name):
         super().__init__(name,
                          [('id', 'req'), ('offset', 'sector'),
@@ -72,8 +74,8 @@ class QemuVirtioLayer(BlkLayer):
         """
         Read a event, submit some read requests
         """
-        offset = int(event['sector_num'])
-        length = int(event['nb_sectors'])
+        offset = int(event['sector_num']) * self.SECTOR_SIZE
+        length = int(event['nb_sectors']) * self.SECTOR_SIZE
         for req, idx in zip(self.added_read_reqs,
                             range(len(self.added_read_reqs))):
             if req.offset == offset and req.length == length:
@@ -94,5 +96,7 @@ class QemuVirtioLayer(BlkLayer):
 
     def gen_req(self, name, event, is_write=1):
         req = super().gen_req(name, event)
+        req.offset *= self.SECTOR_SIZE
+        req.length *= self.SECTOR_SIZE
         req['is_write'] = is_write
         return req
