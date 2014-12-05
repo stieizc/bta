@@ -15,3 +15,6 @@ class QemuVirtioLayerTestCase(unittest.TestCase):
         self.assertEqual(len(self.events), self.linenum,
                          'Event num {0} not equal {1}'.format(len(self.events),
                                                               self.linenum))
+
+    #def test_print(self):
+    #    print(self.events)

@@ -39,6 +39,7 @@ def parseline(line):
 
     for a in ['host', 'scope']:
         event[a] = m.group(a)
+    event['domain'] = m.group('host') + '.' + m.group('scope')
 
     key_vals = attr_split.split(attr.strip())
     for key_val in key_vals:
