@@ -1,0 +1,16 @@
+# Layers should be listed top-bottom
+Layers:
+    QemuVirtioLayer:
+        type: qemu_virtio
+        domains:
+            - debc.qemu
+    QemuRawLayer:
+        type: qemu_raw
+        domains:
+            - debc.qemu
+
+# Deducers
+Deducers:
+    virtio_raw:
+        upper: QemuVirtioLayer
+        lower: QemuRawLayer

@@ -3,12 +3,9 @@ import sys
 
 # Rewrite of blk_analyse
 
-#from libbta.parser import parser_lttng as traceparser
+from libbta.config import Config
 from libbta.parser import parser_babeltrace as traceparser
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        msg = 'Usage: python {} TRACEPATH'.format(sys.argv[0])
-        raise ValueError(msg)
-
-    traceparser.parse(sys.argv[1])
+    config = Config()
+    config.parse_args()
