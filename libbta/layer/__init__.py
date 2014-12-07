@@ -34,6 +34,7 @@ class Layer:
     def _handle_req(self, req, timestamp, queue, event_type):
         req[event_type + '_time'] = timestamp
         queue.append(req)
+        #print("{0}: {1}".format(event_type, str(req)))
         self.notice_all_deducer(req, event_type)
 
     def add_upper_deducer(self, upper):

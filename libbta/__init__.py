@@ -51,9 +51,11 @@ class Request:
             self[r_attr] = event[e_attr]
 
     def add_upper_req(self, req):
+        #print("Link {0}\nupper {1}".format(str(self), str(req)))
         self.upper_reqs.append(req)
 
     def add_lower_req(self, req):
+        #print("Link {0}\nlower {1}".format(str(self), str(req)))
         self.lower_reqs.append(req)
 
     @property

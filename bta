@@ -4,8 +4,10 @@ import sys
 # Rewrite of blk_analyse
 
 from libbta.config import Config
-from libbta.parser import parser_babeltrace as traceparser
+from libbta.sorter import Sorter
 
 if __name__ == '__main__':
     config = Config()
     config.parse_args()
+    sorter = Sorter(config.layermaps)
+    sorter.read_events(config.events)

@@ -65,6 +65,7 @@ class QemuRawLayer(BlkLayer):
         print("Throw event {0}".format(event))
 
     def finish_request(self, req, timestamp):
+        #print("Remove {0}".format(req))
         self.submitted_reqs.remove(req)
         self._finish_req(req, timestamp, self.finished_reqs)
 
