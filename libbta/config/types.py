@@ -11,9 +11,3 @@ from ..layer.deducers import VirtioRawDeducer
 DeducerTypes = {
     'virtio_raw': VirtioRawDeducer
 }
-
-from ..parser.parser_babeltrace import parse as ParseBabeltrace
-
-Parsers = {
-    'babeltrace': ParseBabeltrace
-}

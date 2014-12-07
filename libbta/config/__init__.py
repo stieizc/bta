@@ -2,7 +2,8 @@ import argparse
 import os
 
 from .configparser import ConfigParser
-from .types import LayerTypes, DeducerTypes, Parsers
+from .types import LayerTypes, DeducerTypes
+from ..parser import parse_dir
 
 
 class Config:
@@ -25,15 +26,7 @@ class Config:
         self.configparser.read_file()
 
     def generate_events(self):
-        _dir = self.configparser.trace_dir
-        events = []
-        for f in os.listdir(_dir):
-            _file = os.path.join(_dir, f)
-            if not os.path.isfile(_file):
-                continue
-            _, ext = os.path.splitext(f)
-            events.append(Parsers[ext[1:]](_file))
-        self.merge_events(events)
+        self.events = parse_dir(self.configparser.trace_dir)
 
     def generate_layers(self):
         self.layermaps = []
@@ -48,10 +41,3 @@ class Config:
             lower = layers[attrs['lower']]
             deducer = DeducerTypes[_type](upper, lower)
             self.deducers.append(deducer)
-
-    def merge_events(self, event_queues):
-        self.events = []
-        for events in event_queues:
-            self.events.extend(events)
-        if len(event_queues) > 1:
-            self.events.sort(key=lambda e: e.timestamp)
