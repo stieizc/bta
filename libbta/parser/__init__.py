@@ -16,8 +16,8 @@ def parse_dir(_dir):
 
 def merge_events(event_queues):
     events = []
-    for events in event_queues:
-        events.extend(events)
+    for es in event_queues:
+        events.extend(es)
     if len(event_queues) > 1:
         events.sort(key=lambda e: e.timestamp)
     return events
