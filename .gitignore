@@ -3,3 +3,5 @@ __pycache__/
 
 *.sw*
 .session.vim
+
+test/traces/
