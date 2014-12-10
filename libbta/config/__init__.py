@@ -16,6 +16,8 @@ class Config:
         self.argparser = argparse.ArgumentParser(description='Block trace analyser')
         self.argparser.add_argument('-c', '--config', 
                                     default='bta.yaml', help='Configuration file')
+        self.argparser.add_argument('-a', '--action',
+                                    default='', help='Actions')
         self.parse_args()
         self.generate_events()
         self.generate_layers()

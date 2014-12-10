@@ -11,3 +11,7 @@ if __name__ == '__main__':
     config.parse_args()
     sorter = Sorter(config.layermaps)
     sorter.read_events(config.events)
+
+    if config.args.action == 'list-events':
+        for e in config.events:
+            print(e)
