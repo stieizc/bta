@@ -1,6 +1,8 @@
 import babeltrace
 import sys
 
+from libbta import Event
+
 
 def parse(traces_path):
     # a trace collection holds one to many traces
@@ -11,16 +13,11 @@ def parse(traces_path):
     if col.add_traces_recursive(traces_path, 'ctf') is None:
         raise RuntimeError('Cannot add trace')
 
+    events = []
     # iterate events
-    for event in col.events:
-        print("{0} {1}".format(event.name, event.timestamp))
-        for f, v in event.items():
-            print("{0} {1}".format(f, v))
+    for e in col.events:
+        event = Event(e.name, e.timestamp)
+        event.attrs.update(e)
+        events.append(event)
 
-
-if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        msg = 'Usage: python {} TRACEPATH'.format(sys.argv[0])
-        raise ValueError(msg)
-
-    parse(sys.argv[1])
+    return events
