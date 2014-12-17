@@ -2,7 +2,6 @@ import argparse
 import os
 
 from .configparser import ConfigParser
-from .types import LayerTypes, DeducerTypes
 from ..parser import parse_dir
 
 
@@ -15,7 +14,7 @@ class Config:
         self.deducers = None
         self.argparser = argparse.ArgumentParser(description='Block trace analyser')
         self.argparser.add_argument('-c', '--config', 
-                                    default='bta.yaml', help='Configuration file')
+                                    default='settings.py', help='Configuration file')
         self.argparser.add_argument('-a', '--action',
                                     default='', help='Actions')
         self.parse_args()
@@ -34,12 +33,12 @@ class Config:
         self.layermaps = []
         self.deducers = []
         layers = {}
-        for name, attrs in self.configparser.layers.items():
-            layer = LayerTypes[attrs['type']](name)
+        for name, attrs in self.configparser.layers:
+            layer = attrs['class'](name)
             layers[name] = layer
             self.layermaps.append((layer, attrs['domains']))
-        for _type, attrs in self.configparser.deducers.items():
+        for deducer_class, attrs in self.configparser.deducers:
             upper = layers[attrs['upper']]
             lower = layers[attrs['lower']]
-            deducer = DeducerTypes[_type](upper, lower)
+            deducer = deducer_class(upper, lower)
             self.deducers.append(deducer)
