@@ -10,6 +10,7 @@ class ConfigParser:
         self.wpath, self.filename = os.path.split(self.filepath)
         assert os.path.isdir(self.wpath), \
             "{0} is not a directory".format(self.wpath)
+        self.read_file()
 
     def read_file(self):
         """Read contents from self.filepath"""

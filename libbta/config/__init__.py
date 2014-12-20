@@ -24,7 +24,6 @@ class Config:
     def parse_args(self):
         self.args = self.argparser.parse_args()
         self.configparser = ConfigParser(self.args.config)
-        self.configparser.read_file()
 
     def generate_events(self):
         self.events = parse_dir(self.configparser.trace_dir)
