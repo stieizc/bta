@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 from libbta import Event
-import re
+import regex
 
-meta_pattern = re.compile(r"""
+meta_pattern = regex.compile(r"""
         \[(?P<timestamp>\d+(\.\d*)?|\.\d+)\]
         \ +\(.*\)    # Ignore delta
         \ +(?P<host>\S+)
         \ +(?P<fullname>\S+)
-""", re.VERBOSE)
-attrs_group = re.compile(r"(?<={).*?(?=})")
-key_val_pattern = re.compile(r"(?:[^,[]|\[.*\])+")
-key_val_split = re.compile(r" *(\S+) *= *(.*)")
+""", regex.VERBOSE)
+attrs_group = regex.compile(r"(?<={).*?(?=})")
+#key_val_pattern = regex.compile(r"(?:[^,[]|\[.*\])+")
+key_val_pattern = regex.compile(r"([^,\[\]]+(?:\[(?:[^[\]]*|(?1))*\])*)")
+key_val_split = regex.compile(r" *(\S+) *= *(.*) *")
 
 
 def parse(infile):
@@ -29,7 +30,7 @@ def parseline(line):
     """
     Generate event from line
     """
-    meta, attrs = re.split(r': (?={)', line, 1)
+    meta, attrs = regex.split(r': (?={)', line, 1)
 
     m = meta_pattern.match(meta)
     timestamp = float(m.group('timestamp'))
@@ -48,16 +49,17 @@ def parseline(line):
     event['domain'] = m.group('host') + '.' + scope
 
     #print(attrs)
-    parse_attrs(attrs, event)
-    #parse_attrs_with_one_parened(attrs, event)
+    #parse_attrs(attrs, event)
+    parse_attrs_with_one_parened(attrs, event)
     return event
 
 
 def parse_attrs_with_one_parened(attrs, event):
     for key_vals in attrs_group.findall(attrs.strip()):
-        for key_val in key_val_pattern.findall(key_vals):
+
+        for key_val in key_val_pattern.findall(key_vals.strip()):
             m = key_val_split.match(key_val)
-            event[m.group(1)] = m.group(2).strip()
+            event[m.group(1)] = m.group(2)
     return event
 
 def parse_attrs(attrs, event):
@@ -68,7 +70,7 @@ def parse_attrs(attrs, event):
 
     last = 0
     current = 0
-    tokens = [token for token in re.split('([{}[\],])| ', attrs.strip()) if
+    tokens = [token for token in regex.split('([{}[\],])| ', attrs.strip()) if
               token]
     for token in tokens:
         #print('$ '+token)
