@@ -1,4 +1,5 @@
 from collections import deque
+from functools import partial
 
 from . import BlkLayer
 
@@ -22,8 +23,6 @@ class QemuRawLayer(BlkLayer):
         self.added_reqs = deque()
         self.submitted_reqs = deque()
         self.finished_reqs = deque()
-
-        self.issued_reqs = self.submitted_reqs
 
     def __repr__(self):
         string = '\n'.join([super().__repr__(),
@@ -49,25 +48,24 @@ class QemuRawLayer(BlkLayer):
         """
         req = self.gen_req('qemu_raw_rw', event)
         if req.type == 'read' or req.type == 'write':
-            self._add_req(req, event.timestamp, self.added_reqs)
+            self._add_req(event.timestamp, self.added_reqs, req)
 
     def submit_request(self, event):
         """
         Read a event, submit a request
         """
         _id = event['aiocb']
-        for req, idx in zip(self.added_reqs,
-                            range(len(self.added_reqs))):
-            if req['id'] == _id:
-                del self.added_reqs[idx]
-                self._submit_req(req, event.timestamp, self.submitted_reqs)
-                return
-        print("Throw event {0}".format(event))
+        self.fifo_req_out_warn(
+                self.added_reqs,
+                partial(BlkLayer.critique_by_id, _id),
+                partial(self._submit_req, event.timestamp,
+                        self.submitted_reqs),
+                event)
 
     def finish_request(self, req, timestamp):
         #print("Remove {0}".format(req))
         self.submitted_reqs.remove(req)
-        self._finish_req(req, timestamp, self.finished_reqs)
+        self._finish_req(timestamp, self.finished_reqs, req)
 
     def gen_req(self, name, event):
         req = super().gen_req(name, event)

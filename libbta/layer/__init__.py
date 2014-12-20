@@ -22,13 +22,13 @@ class Layer:
         self.upper = None
         self.lower = None
 
-    def _add_req(self, req, timestamp, queue):
+    def _add_req(self, timestamp, queue, req):
         self._handle_req(req, timestamp, queue, 'add')
 
-    def _submit_req(self, req, timestamp, queue):
+    def _submit_req(self, timestamp, queue, req):
         self._handle_req(req, timestamp, queue, 'submit')
 
-    def _finish_req(self, req, timestamp, queue):
+    def _finish_req(self, timestamp, queue, req):
         self._handle_req(req, timestamp, queue, 'finish')
 
     def _handle_req(self, req, timestamp, queue, event_type):
@@ -59,6 +59,29 @@ class Layer:
     @staticmethod
     def notice(deducer, req, event_type, layer):
         deducer.deduce(req, event_type, layer)
+
+    @staticmethod
+    def fifo_req_out(src, critique, action):
+        for req, idx in zip(src, range(len(src))):
+            if critique(req):
+                del src[idx]
+                action(req)
+                return True
+        return False
+
+    @staticmethod
+    def fifo_req_out_warn(src, critique, action, event):
+        found = Layer.fifo_req_out(src, critique, action)
+        if not found:
+            print("Throw event {0}".format(event))
+
+    @staticmethod
+    def critique_by_pos(offset, length, req):
+        return req.offset == offset and req.length == length
+
+    @staticmethod
+    def critique_by_id(_id, req):
+        return req['id'] == _id
 
     def __repr__(self):
         return self.name
