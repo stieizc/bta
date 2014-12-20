@@ -8,6 +8,9 @@ meta_pattern = re.compile(r"""
         \ +(?P<host>\S+)
         \ +(?P<fullname>\S+)
 """, re.VERBOSE)
+attrs_group = re.compile(r"(?<={).*?(?=})")
+key_val_pattern = re.compile(r"(?:[^,[]|\[.*\])+")
+key_val_split = re.compile(r" *(\S+) *= *(.*)")
 
 
 def parse(infile):
@@ -26,7 +29,7 @@ def parseline(line):
     """
     Generate event from line
     """
-    meta, _,  attrs = line.partition(': {')
+    meta, attrs = re.split(r': (?={)', line, 1)
 
     m = meta_pattern.match(meta)
     timestamp = float(m.group('timestamp'))
@@ -44,42 +47,54 @@ def parseline(line):
     event['host'] = m.group('host')
     event['domain'] = m.group('host') + '.' + scope
 
+    #print(attrs)
     parse_attrs(attrs, event)
+    #parse_attrs_with_one_parened(attrs, event)
     return event
 
 
+def parse_attrs_with_one_parened(attrs, event):
+    for key_vals in attrs_group.findall(attrs.strip()):
+        for key_val in key_val_pattern.findall(key_vals):
+            m = key_val_split.match(key_val)
+            event[m.group(1)] = m.group(2).strip()
+    return event
+
 def parse_attrs(attrs, event):
+    #print(attrs.strip())
     paren_level = 0
     bracket_level = 0
     brace_level = 0
 
     last = 0
     current = 0
-    #print(attrs)
-    for c in attrs:
-        if c == '{':
+    tokens = [token for token in re.split('([{}[\],])| ', attrs.strip()) if
+              token]
+    for token in tokens:
+        #print('$ '+token)
+        if token == '{':
             last = current + 1
             brace_level += 1
-        elif c == '}' or c == ',':
-            if brace_level == 0 and paren_level == 0 and bracket_level == 0:
-                val = attrs[last:current]
-                #print(key)
+        elif token == '}' or token == ',':
+            if brace_level == 1 and paren_level == 0 and bracket_level == 0:
+                val = ''.join(tokens[last:current])
                 #print(val)
                 event[key.strip()] = val.strip()
                 last = current + 1
-            if c == '}':
+            if token == '}':
                 brace_level -= 1
-        elif c == '[':
+        elif token == '[':
             bracket_level += 1
-        elif c == ']':
+        elif token == ']':
             bracket_level -= 1
-        elif c == '(':
+        elif token == '(':
             paren_level += 1
-        elif c == ')':
+        elif token == ')':
             paren_level -= 1
-        elif c == '=':
-            if brace_level == 0 and paren_level == 0 and bracket_level == 0:
-                key = attrs[last:current]
+        elif token == '=':
+            if brace_level == 1 and paren_level == 0 and bracket_level == 0:
+                key = ''.join(tokens[last:current])
+                #print('k '+key)
                 last = current + 1
         current += 1
         #print("Hi {} {} {}".format(paren_level, bracket_level, brace_level))
