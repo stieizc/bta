@@ -1,26 +1,20 @@
-class Event:
+class Event(dict):
     """
     Basic unit of a trace file and an analysis
     """
     def __init__(self, name, timestamp):
         self.name = name
         self.timestamp = timestamp
-        self.attrs = {}
 
     def __repr__(self):
         """
         Internal Printing
         """
-        return "{0} {1} {2}".format(self.name, self.timestamp, self.attrs)
-
-    def __getitem__(self, key):
-        return self.attrs[key]
-
-    def __setitem__(self, key, value):
-        self.attrs[key] = value
+        return "{0} {1} {2}".format(self.name, self.timestamp,
+                                    super().__repr__())
 
 
-class Request:
+class Request(dict):
     """
     Basic unit of analysis
 
@@ -30,21 +24,12 @@ class Request:
 
     def __init__(self, name):
         self.name = name
-        self.attrs = {}
         self.upper_reqs = []
         self.lower_reqs = []
 
     def __repr__(self):
-        return "{0}: {1} {2}".format(self.name, self.timestamps, self.attrs)
-
-    def __getitem__(self, key):
-        return self.attrs[key]
-
-    def get(self, key):
-        return self.attrs.get(key)
-
-    def __setitem__(self, key, value):
-        self.attrs[key] = value
+        return "{0}: {1} {2}".format(self.name, self.timestamps,
+                                     super().__repr__())
 
     def get_event_attrs(self, event, attrs_map):
         for r_attr, e_attr in attrs_map:
@@ -98,27 +83,27 @@ class BlkRequest(Request):
     """
     @property
     def offset(self):
-        return self.attrs['offset']
+        return self['offset']
 
     @offset.setter
     def offset(self, offset):
-        self.attrs['offset'] = offset
+        self['offset'] = offset
 
     @property
     def length(self):
-        return self.attrs['length']
+        return self['length']
 
     @length.setter
     def length(self, length):
-        self.attrs['length'] = length
+        self['length'] = length
 
     @property
     def type(self):
-        return self.attrs['type']
+        return self['type']
 
     @type.setter
     def type(self, _type):
-        self.attrs['type'] = _type
+        self['type'] = _type
 
     @property
     def end(self):
