@@ -13,11 +13,4 @@ def parse(traces_path):
     if col.add_traces_recursive(traces_path, 'ctf') is None:
         raise RuntimeError('Cannot add trace')
 
-    events = []
-    # iterate events
-    for e in col.events:
-        event = Event(e.name, e.timestamp)
-        event.attrs.update(e)
-        events.append(event)
-
-    return events
+    return col.events
