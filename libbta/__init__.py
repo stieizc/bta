@@ -26,6 +26,7 @@ class Request(dict):
         self.name = name
         self.upper_reqs = []
         self.lower_reqs = []
+        self.merged_reqs = []
 
     def __repr__(self):
         return "{0}: {1} {2}".format(self.name, self.timestamps,
