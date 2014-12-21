@@ -61,23 +61,33 @@ class Layer:
         deducer.deduce(req, event_type, layer)
 
     @staticmethod
-    def fifo_req_out(src, critique, action):
+    def fifo_req_out(src, critique):
         for req, idx in zip(src, range(len(src))):
             if critique(req):
                 del src[idx]
-                action(req)
-                return True
-        return False
+                return req
+        return None
 
     @staticmethod
-    def fifo_req_out_warn(src, critique, action, event):
-        found = Layer.fifo_req_out(src, critique, action)
-        if not found:
+    def fifo_req_mv(src, critique, action):
+        req = Layer.fifo_req_out(src, critique)
+        if req:
+            action(req)
+        return req
+
+    @staticmethod
+    def fifo_req_mv_warn(src, critique, action, event):
+        req = Layer.fifo_req_mv(src, critique, action)
+        if not req:
             print("Throw event {0}".format(event))
+        return req
 
     @staticmethod
-    def critique_by_pos(offset, length, req):
-        return req.offset == offset and req.length == length
+    def fifo_req_out_warn(src, critique, event):
+        req = Layer.fifo_req_out(src, critique)
+        if not req:
+            print("Throw event {0}".format(event))
+        return req
 
     @staticmethod
     def critique_by_id(_id, req):
@@ -91,6 +101,8 @@ class BlkLayer(Layer):
     """
     Block Layer
     """
+    SECTOR_SIZE = 512
+
     def __init__(self, name, req_attrs_map):
         super().__init__(name)
         self.req_attrs_map = req_attrs_map
@@ -102,6 +114,12 @@ class BlkLayer(Layer):
         req.length = int(req.length)
         return req
 
+    @staticmethod
+    def critique_by_pos(offset, length, req):
+        return req.offset == offset and req.length == length
+
+    def sec2byte(self, sector):
+        return int(sector) * self.SECTOR_SIZE
 
 class Deducer:
     """

@@ -55,7 +55,7 @@ class QemuRawLayer(BlkLayer):
         Read a event, submit a request
         """
         _id = event['aiocb']
-        self.fifo_req_out_warn(
+        self.fifo_req_mv_warn(
                 self.added_reqs,
                 partial(BlkLayer.critique_by_id, _id),
                 partial(self._submit_req, event.timestamp,

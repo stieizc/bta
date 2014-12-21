@@ -75,7 +75,7 @@ class QemuVirtioLayer(BlkLayer):
         """
         offset = int(event['sector_num']) * self.SECTOR_SIZE
         length = int(event['nb_sectors']) * self.SECTOR_SIZE
-        self.fifo_req_out_warn(
+        self.fifo_req_mv_warn(
                 self.added_read_reqs,
                 partial(BlkLayer.critique_by_pos, offset, length),
                 partial(self._submit_req, event.timestamp,
@@ -84,7 +84,7 @@ class QemuVirtioLayer(BlkLayer):
 
     def finish_request(self, event):
         _id = event['req']
-        self.fifo_req_out_warn(
+        self.fifo_req_mv_warn(
                 self.submitted_reqs,
                 partial(BlkLayer.critique_by_id, _id),
                 partial(self._finish_req, event.timestamp,
