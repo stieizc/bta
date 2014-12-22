@@ -28,7 +28,7 @@ class LinuxBlockLayer(BlkLayer):
     def __init__(self, name):
         super().__init__(name,
                          [('offset', 'sector'), ('length', 'nr_sector'),
-                          ('type', 'rwbs')])
+                          ('dev', 'dev'), ('type', 'rwbs')])
         self.added_reqs = deque()
         self.submitted_reqs = deque()
         self.finished_reqs = deque()
@@ -141,7 +141,8 @@ class LinuxBlockLayer(BlkLayer):
     @staticmethod
     def critique(offset, length, dev, _type, req):
         return (req['offset'] == offset and req['length'] == length
-                and req['dev'] == dev and req['type'] == _type)
+                and req['dev'] == dev and
+                LinuxBlockLayer._op_type_same(req['type'], _type))
 
     def gen_critique(self, event):
         offset = self.sec2byte(event['sector'])
