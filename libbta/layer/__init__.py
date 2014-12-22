@@ -96,6 +96,12 @@ class Layer:
     def __repr__(self):
         return self.name
 
+    def same_op_type(self, req1, req2):
+        return self._op_type_same(req1.type, req2.type)
+
+    @staticmethod
+    def _op_type_same(type1, type2):
+        return type1 == type2
 
 class BlkLayer(Layer):
     """
@@ -120,26 +126,3 @@ class BlkLayer(Layer):
 
     def sec2byte(self, sector):
         return int(sector) * self.SECTOR_SIZE
-
-class Deducer:
-    """
-    Deduce the relationship between requests from lower and upper layers.
-    """
-    def __init__(self, upper, lower):
-        self.layers = {'upper': upper, 'lower': lower}
-        self.deduce_funcs = {'upper': {}, 'lower': {}}
-        upper.add_lower_deducer(self)
-        lower.add_upper_deducer(self)
-
-    def deduce(self, req, event_type, layer_to_search):
-        deduce_func = self.deduce_funcs[layer_to_search].get(event_type)
-        if deduce_func:
-            deduce_func(self, req)
-
-    @property
-    def upper(self):
-        return self.layers['upper']
-
-    @property
-    def lower(self):
-        return self.layers['lower']

@@ -1,6 +1,3 @@
-from . import Deducer
-
-
 def _deduce_lower_add(self, lower_req):
     """
     When a req is added to lower, find reqs contained by lower_req, set links
@@ -8,7 +5,7 @@ def _deduce_lower_add(self, lower_req):
     """
     #print("Deducing on lower {0}".format(str(lower_req)))
     for upper_req in self.upper.submitted_reqs:
-        if upper_req.type == lower_req.type and lower_req.contains(upper_req):
+        if upper_req.type == lower_req.type and lower_req.overlaps(upper_req):
             upper_req.add_lower_req(lower_req)
             lower_req.add_upper_req(upper_req)
     #print("Deduced")
@@ -24,7 +21,42 @@ def _deduce_upper_finish(self, upper_req):
             self.layers['lower'].finish_request(lower_req, upper_req.finish_time)
     #print("Deduced")
 
-class VirtioRawDeducer(Deducer):
+
+class Deducer:
+    """
+    Deduce the relationship between requests from lower and upper layers.
+    """
+    def __init__(self, upper, lower):
+        self.layers = {'upper': upper, 'lower': lower}
+        self.deduce_funcs = {'upper': {}, 'lower': {}}
+        upper.add_lower_deducer(self)
+        lower.add_upper_deducer(self)
+
+    def deduce(self, req, event_type, layer_to_search):
+        deduce_func = self.deduce_funcs[layer_to_search].get(event_type)
+        if deduce_func:
+            deduce_func(self, req)
+
+    @property
+    def upper(self):
+        return self.layers['upper']
+
+    @property
+    def lower(self):
+        return self.layers['lower']
+
+
+class FifoDeducer(Deducer):
+    """
+    When lower layer adds a request, find the upper reqs that overlaps with it
+    and link with them
+    """
+    def __init__(self, upper, lower):
+        super().__init__(upper, lower)
+        self.deduce_funcs['lower']['add'] = _deduce_lower_add
+
+
+class VirtioRawDeducer(FifoDeducer):
     """
     Deducer for block request, when upper and lower layers both are block
     layers.
@@ -36,5 +68,4 @@ class VirtioRawDeducer(Deducer):
     """
     def __init__(self, upper, lower):
         super().__init__(upper, lower)
-        self.deduce_funcs['lower'] = {'add': _deduce_lower_add}
-        self.deduce_funcs['upper'] = {'finish': _deduce_upper_finish}
+        self.deduce_funcs['upper']['finish'] = _deduce_upper_finish

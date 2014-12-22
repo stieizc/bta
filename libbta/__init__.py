@@ -112,3 +112,6 @@ class BlkRequest(Request):
 
     def contains(self, req):
         return self.offset <= req.offset and self.end >= req.end
+
+    def overlaps(self, req):
+        return self.offset <= req.end and req.offset <= self.end
