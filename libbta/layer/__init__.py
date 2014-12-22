@@ -79,14 +79,14 @@ class Layer:
     def fifo_req_mv_warn(src, critique, action, event):
         req = Layer.fifo_req_mv(src, critique, action)
         if not req:
-            print("Throw event {0}".format(event))
+            print("Mv Throw event {0}".format(event))
         return req
 
     @staticmethod
     def fifo_req_out_warn(src, critique, event):
         req = Layer.fifo_req_out(src, critique)
         if not req:
-            print("Throw event {0}".format(event))
+            print("Out Throw event {0}".format(event))
         return req
 
     @staticmethod

@@ -1,6 +1,9 @@
 from libbta.config.types import *
 
-Layers = [('qemu_virtio',
+Layers = [('guest_blk',
+           {'class': LinuxBlockLayer,
+            'domains': ['debian-fstest.kernel']}),
+          ('qemu_virtio',
            {'class': QemuVirtioLayer,
             'domains': ['debc.qemu']}),
           ('qemu_raw_backend',
@@ -9,4 +12,7 @@ Layers = [('qemu_virtio',
 
 Deducers = [(VirtioRawDeducer,
             {'upper': 'qemu_virtio',
-             'lower': 'qemu_raw_backend'})]
+             'lower': 'qemu_raw_backend'}),
+            (FifoDeducer,
+            {'upper': 'guest_blk',
+             'lower': 'qemu_virtio'})]
