@@ -1,4 +1,5 @@
-from libbta.config.types import *
+from libbta.config.types import QemuRawLayer, QemuVirtioLayer, \
+    LinuxBlockLayer, FifoDeducer, VirtioRawDeducer
 
 Layers = [('guest_blk',
            {'class': LinuxBlockLayer,
@@ -10,9 +11,10 @@ Layers = [('guest_blk',
            {'class': QemuRawLayer,
             'domains': ['debc.qemu']})]
 
-Deducers = [(VirtioRawDeducer,
-            {'upper': 'qemu_virtio',
-             'lower': 'qemu_raw_backend'}),
-            (FifoDeducer,
+Deducers = [(FifoDeducer,
             {'upper': 'guest_blk',
-             'lower': 'qemu_virtio'})]
+             'lower': 'qemu_virtio'}),
+            (VirtioRawDeducer,
+            {'upper': 'qemu_virtio',
+             'lower': 'qemu_raw_backend'})
+            ]
