@@ -1,6 +1,4 @@
-from collections import deque
-from functools import partial
-
+from libbta import ReqQueue
 from . import BlkLayer
 
 
@@ -12,88 +10,59 @@ class QemuVirtioLayer(BlkLayer):
     finish operation. They have separate added queues, but same submit and
     finish queue.
     """
-    SECTOR_SIZE = 512
+    req_attrs_map = {'id': ('req', str), 'offset': ('sector', int),
+                     'length': ('nsectors', int)}
+
 
     def __init__(self, name):
-        super().__init__(name,
-                         [('id', 'req'), ('offset', 'sector'),
-                          ('length', 'nsectors')])
-        self.added_write_reqs = deque()
-        self.added_read_reqs = deque()
-        self.submitted_reqs = deque()
-        self.finished_reqs = deque()
+        super().__init__(name)
+        self.event_info_map = {
+            'virtio_blk_handle_write': {'type': 'add',
+                                        'name': 'qemu_virtio_write',
+                                        'op': 'write', 'queue': 'add_write'},
+            'virtio_blk_handle_read': {'type': 'add',
+                                       'name': 'qemu_virtio_read',
+                                       'op': 'read', 'queue': 'add_read'},
+            'bdrv_aio_multiwrite': {'handler': 'submit_write'},
+            'bdrv_aio_readv': {'type': 'submit', 'src': 'add_read',
+                               'rule': self.rule_submit},
+            'virtio_blk_rw_complete': {'type': 'finish', 'src': 'submit',
+                                       'rule': self.rule_finish}}
+        self.req_queue = {'add_read': ReqQueue(), 'add_write': ReqQueue(),
+                          'submit': ReqQueue(), 'finish': ReqQueue()}
+        self.event_handlers['submit_write'] = self.submit_write_request
 
     def __repr__(self):
-        string = '\n'.join([super().__repr__(),
-                            'Added write: ' + str(self.added_write_reqs),
-                            'Added read: ' + str(self.added_read_reqs,),
-                            'Submitted: ' + str(self.submitted_reqs),
-                            'Finished: ' + str(self.finished_reqs)])
-        return string
+        return '\n'.join([
+            super().__repr__(),
+            'Added write: '+ str(len(self.req_queue['add_write'])),
+            'Added read: ' + str(len(self.req_queue['add_read'])),
+            'Submitted: ' + str(len(self.req_queue['submit'])),
+            'Finished: ' + str(len(self.req_queue['finish']))])
 
-    def read_event(self, event):
-        """
-        Read a event, associate it with a request, deduce it's relation with
-        upper layer. Well, the deducing actually happens in upper layer
-        """
-        if event.name == 'virtio_blk_handle_write':
-            self.add_write_request(event)
-        elif event.name == 'virtio_blk_handle_read':
-            self.add_read_request(event)
-        elif event.name == 'bdrv_aio_multiwrite':
-            self.submit_write_request(event)
-        elif event.name == 'bdrv_aio_readv':
-            self.submit_read_request(event)
-        elif event.name == 'virtio_blk_rw_complete':
-            self.finish_request(event)
+    @classmethod
+    def gen_req(cls, event, info):
+        req = super().gen_req(event, info)
+        req.rwbs = BlkLayer.add_rwbs_flag(0, info['op'])
+        return req
 
-    def add_write_request(self, event):
-        """
-        Read a event, generate a write request
-        """
-        req = self.gen_req('qemu_virtio_write', event, 'write')
-        self._add_req(event.timestamp, self.added_write_reqs, req)
-
-    def add_read_request(self, event):
-        """
-        Read a event, generate a read request
-        """
-        req = self.gen_req('qemu_virtio_read', event, 'read')
-        self._add_req(event.timestamp, self.added_read_reqs, req)
-
-    def submit_write_request(self, event):
+    def submit_write_request(self, event, info):
         """
         Read a event, submit some write requests
         """
         for i in range(int(event['num_callbacks'])):
-            req = self.added_write_reqs.popleft()
-            self._submit_req(event.timestamp, self.submitted_reqs, req)
+            req = self.req_queue['add_write'].popleft()
+            self._submit_req(event.timestamp, self.req_queue['submit'], req)
 
-    def submit_read_request(self, event):
+    @classmethod
+    def rule_submit(cls, req, event):
         """
         Read a event, submit some read requests
         """
-        offset = int(event['sector_num']) * self.SECTOR_SIZE
-        length = int(event['nb_sectors']) * self.SECTOR_SIZE
-        self.fifo_req_mv_warn(
-                self.added_read_reqs,
-                partial(BlkLayer.critique_by_pos, offset, length),
-                partial(self._submit_req, event.timestamp,
-                        self.submitted_reqs),
-                event)
+        offset = int(event['sector_num']) * cls.SECTOR_SIZE
+        length = int(event['nb_sectors']) * cls.SECTOR_SIZE
+        return req['offset'] == offset and req['length'] == length
 
-    def finish_request(self, event):
-        _id = event['req']
-        self.fifo_req_mv_warn(
-                self.submitted_reqs,
-                partial(BlkLayer.critique_by_id, _id),
-                partial(self._finish_req, event.timestamp,
-                        self.finished_reqs),
-                event)
-
-    def gen_req(self, name, event, _type):
-        req = super().gen_req(name, event)
-        req.offset *= self.SECTOR_SIZE
-        req.length *= self.SECTOR_SIZE
-        req.type = _type
-        return req
+    @staticmethod
+    def rule_finish(req, event):
+        return req['id'] == event['req']

@@ -37,6 +37,8 @@ class Sorter:
     def read_events(self, events):
         for event in events:
             self.dispatch(event)
+        for layer, _ in self.layermap:
+            print(layer)
 
     def dispatch(self, event):
         for layer, domains in self.layermap:

@@ -1,6 +1,6 @@
-from collections import deque
-from functools import partial
+import sys
 
+from libbta import ReqQueue
 from . import BlkLayer
 
 
@@ -14,139 +14,82 @@ class LinuxBlockLayer(BlkLayer):
 
     'queued' is the real 'add' event.
     """
-    RWBS_FLAG_WRITE = (1 << 0)
-    RWBS_FLAG_DISCARD = (1 << 1)
-    RWBS_FLAG_READ = (1 << 2)
-    RWBS_FLAG_RAHEAD = (1 << 3)
-    RWBS_FLAG_BARRIER = (1 << 4)
-    RWBS_FLAG_SYNC = (1 << 5)
-    RWBS_FLAG_META = (1 << 6)
-    RWBS_FLAG_SECURE = (1 << 7)
-    RWBS_FLAG_FLUSH = (1 << 8)
-    RWBS_FLAG_FUA = (1 << 9)
+
+    req_attrs_map = {'offset': ('sector', int), 'length': ('nr_sector', int),
+                     'dev': ('dev', str), 'rwbs': ('rwbs', int)}
 
     def __init__(self, name):
-        super().__init__(name,
-                         [('offset', 'sector'), ('length', 'nr_sector'),
-                          ('dev', 'dev'), ('type', 'rwbs')])
-        self.added_reqs = deque()
-        self.submitted_reqs = deque()
-        self.finished_reqs = deque()
+        super().__init__(name)
+        self.event_info_map = {
+            'block_bio_queue': {'type': 'add', 'name': 'block_bio'},
+            'block_bio_backmerge': {'type': 'backmerge'},
+            'block_bio_frontmerge': {'type': 'frontmerge'},
+            'block_rq_issue': {'type': 'submit', 'src': 'add',
+                               'rule': self.rule},
+            'block_rq_complete': {'type': 'finish', 'src': 'submit',
+                                  'rule': self.rule}}
+        self.req_queue = {'add': ReqQueue(), 'submit': ReqQueue(),
+                          'finish': ReqQueue()}
+        self.event_handlers['backmerge'] = self.backmerge_request
+        self.event_handlers['frontmerge'] = self.frontmerge_request
+        self.event_handlers['finish'] = self.finish_request
 
     def __repr__(self):
-        string = '\n'.join([super().__repr__(),
-                            'Added: ' + str(self.added_reqs),
-                            'Submitted: ' + str(self.submitted_reqs),
-                            'Finished: ' + str(self.finished_reqs)])
-        return string
+        return '\n'.join([
+            super().__repr__(),
+            'Added: ' + str(len(self.req_queue['add'])),
+            'Submitted: ' + str(len(self.req_queue['submit'])),
+            'Finished: ' + str(len(self.req_queue['finish']))])
 
-    def read_event(self, event):
-        """
-        Read a event, associate it with a request, deduce it's relation with
-        upper layer. Well, the deducing actually happens in upper layer
-        """
-        if event.name == 'block_bio_queue':
-            self.added_request(event)
-        elif event.name == 'block_bio_backmerge':
-            self.backmerge_request(event)
-        elif event.name == 'block_bio_frontmerge':
-            self.frontmerge_request(event)
-        elif event.name == 'block_rq_issue':
-            self.submit_request(event)
-        elif event.name == 'block_rq_complete':
-            self.finish_request(event)
-
-    def added_request(self, event):
-        req = self.gen_req('blk_bio', event)
-        self._add_req(event.timestamp, self.added_reqs, req)
-
-    def submit_request(self, event):
-        """
-        Read a event, submit a request
-        """
-        self.fifo_req_mv_warn(
-                self.added_reqs,
-                self.gen_critique(event),
-                partial(self._submit_req, event.timestamp,
-                        self.submitted_reqs),
-                event)
-
-    def backmerge_request(self, event):
-        to_merge = self.fifo_req_out_warn(
-                self.added_reqs,
-                self.gen_critique(event),
-                event)
+    def backmerge_request(self, event, info):
+        to_merge = self.req_queue['add'].req_out(self.rule, event)
 
         if to_merge:
-            offset = to_merge.offset
-            dev = to_merge['dev']
-            _type = to_merge.type
-            for req in self.added_reqs:
-                if (req['dev'] == dev and req.offset + req.length == offset
-                    and self._op_type_same(req.type, _type)):
+            for req in self.req_queue['add']:
+                if self.rule_backmerge(to_merge, req):
                     req.length += to_merge.length
                     req.merged_reqs.append(to_merge)
-                    return
+                    return to_merge
+        print('Cannot backmerge req {0}, event {1}'.format(to_merge, event),
+              file=sys.stderr)
 
-    def frontmerge_request(self, event):
-        to_merge = self.fifo_req_out_warn(
-                self.added_reqs,
-                self.gen_critique(event),
-                event)
+    @classmethod
+    def rule_backmerge(cls, to_merge, dest):
+        return to_merge['dev'] == dest['dev'] \
+            and to_merge.offset == dest.offset + dest.length \
+            and to_merge.op_type_same(dest)
+
+    def frontmerge_request(self, event, info):
+        to_merge = self.req_queue['add'].req_out(self.rule, event)
 
         if to_merge:
-            offset = to_merge.offset + to_merge.length
-            dev = to_merge['dev']
-            _type = to_merge.type
-            for req in self.added_reqs:
-                if (req['dev'] == dev and req.offset == offset
-                    and self._op_type_same(req.type, _type)):
+            for req in self.req_queue['add']:
+                if self.rule_frontmerge(to_merge, req):
                     req.offset = to_merge.offset
                     req.length += to_merge.length
                     req.merged_reqs.append(to_merge)
-                    return
+                    return to_merge
+        print('Cannot frontmerge req {0}, event {1}'.format(to_merge, event),
+              file=sys.stderr)
 
-        print('Cannot merge req {0}, event {1}'.format(to_merge, event))
+    @classmethod
+    def rule_frontmerge(cls, to_merge, dest):
+        return dest['dev'] == to_merge['dev'] \
+            and dest.offset == to_merge.offset + to_merge.length \
+            and to_merge.op_type_same(dest)
 
-    def finish_request(self, event):
-        """
-        Read a event, finish a request
-        """
-        master_req = self.fifo_req_mv_warn(
-                self.submitted_reqs,
-                self.gen_critique(event),
-                partial(self._finish_req, event.timestamp,
-                        self.finished_reqs),
-                event)
-
+    def finish_request(self, event, info):
+        master_req = self.fifo_mv_request(event, info)
         if master_req:
             for req in master_req.merged_reqs:
-                self._finish_req(event.timestamp, self.finished_reqs, req)
+                self._finish_req(event.timestamp, self.req_queue['finish'],
+                                 req)
 
-    def gen_req(self, name, event):
-        req = super().gen_req(name, event)
-        req.offset = self.sec2byte(req.offset)
-        req.length = self.sec2byte(req.length)
-        req.type = int(req.type)
-        return req
-
-    @staticmethod
-    def op_type(rwbs):
-        return (7 & rwbs)
-
-    @staticmethod
-    def _op_type_same(rwbs1, rwbs2):
-        return  LinuxBlockLayer.op_type(rwbs1) == LinuxBlockLayer.op_type(rwbs2)
-
-    @staticmethod
-    def critique(offset, length, dev, _type, req):
-        return (req['offset'] == offset and req['length'] == length
-                and req['dev'] == dev and
-                LinuxBlockLayer._op_type_same(req['type'], _type))
-
-    def gen_critique(self, event):
-        offset = self.sec2byte(event['sector'])
-        length = self.sec2byte(event['nr_sector'])
+    @classmethod
+    def rule(cls, req, event):
+        offset = int(event['sector']) * cls.SECTOR_SIZE
+        length = int(event['nr_sector']) * cls.SECTOR_SIZE
         dev = event['dev']
-        _type = int(event['rwbs'])
-        return partial(self.critique, offset, length, dev, _type)
+        rwbs = int(event['rwbs'])
+        return req['offset'] == offset and req['length'] == length \
+            and req['dev'] == dev and req.op_type_equal(rwbs)

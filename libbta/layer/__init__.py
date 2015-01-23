@@ -1,3 +1,5 @@
+import sys
+
 from libbta import BlkRequest
 
 
@@ -23,15 +25,19 @@ class Layer:
         self.lower = None
 
     def _add_req(self, timestamp, queue, req):
-        self._handle_req(req, timestamp, queue, 'add')
+        self._handle_req(timestamp, queue, 'add', req)
 
     def _submit_req(self, timestamp, queue, req):
-        self._handle_req(req, timestamp, queue, 'submit')
+        self._handle_req(timestamp, queue, 'submit', req)
 
     def _finish_req(self, timestamp, queue, req):
-        self._handle_req(req, timestamp, queue, 'finish')
+        self._handle_req(timestamp, queue, 'finish', req)
 
-    def _handle_req(self, req, timestamp, queue, event_type):
+    def _handle_req(self, timestamp, queue, event_type, req):
+        """
+        Set the timestamp according to event_type, add it to a queue, and
+        notice upper and lower deducer with request and event_type
+        """
         req[event_type + '_time'] = timestamp
         queue.append(req)
         #print("{0}: {1}".format(event_type, str(req)))
@@ -60,48 +66,9 @@ class Layer:
     def notice(deducer, req, event_type, layer):
         deducer.deduce(req, event_type, layer)
 
-    @staticmethod
-    def fifo_req_out(src, critique):
-        for req, idx in zip(src, range(len(src))):
-            if critique(req):
-                del src[idx]
-                return req
-        return None
-
-    @staticmethod
-    def fifo_req_mv(src, critique, action):
-        req = Layer.fifo_req_out(src, critique)
-        if req:
-            action(req)
-        return req
-
-    @staticmethod
-    def fifo_req_mv_warn(src, critique, action, event):
-        req = Layer.fifo_req_mv(src, critique, action)
-        if not req:
-            print("Mv Throw event {0}".format(event))
-        return req
-
-    @staticmethod
-    def fifo_req_out_warn(src, critique, event):
-        req = Layer.fifo_req_out(src, critique)
-        if not req:
-            print("Out Throw event {0}".format(event))
-        return req
-
-    @staticmethod
-    def critique_by_id(_id, req):
-        return req['id'] == _id
-
     def __repr__(self):
         return self.name
 
-    def same_op_type(self, req1, req2):
-        return self._op_type_same(req1.type, req2.type)
-
-    @staticmethod
-    def _op_type_same(type1, type2):
-        return type1 == type2
 
 class BlkLayer(Layer):
     """
@@ -109,20 +76,99 @@ class BlkLayer(Layer):
     """
     SECTOR_SIZE = 512
 
-    def __init__(self, name, req_attrs_map):
+    def __init__(self, name):
         super().__init__(name)
-        self.req_attrs_map = req_attrs_map
+        self.event_handlers = {
+                'add': self.add_request,
+                'submit': self.fifo_mv_request,
+                'finish': self.fifo_mv_request}
 
-    def gen_req(self, name, event):
-        req = BlkRequest(name)
-        req.get_event_attrs(event, self.req_attrs_map)
-        req.offset = int(req.offset)
-        req.length = int(req.length)
+    def read_event(self, event):
+        """
+        Read a event, pass it to *a* proper handler, if any. So a event only
+        gets handled once.
+
+        info is a object passed as argument to standard handlers. If it has a
+        handler field, then that handler is called instead.
+
+        Directly needed entries of info are:
+        'type': see 'handler'
+
+        Optional entries:
+        'handler': if has one, use it as the handler name; otherwise use
+                   info['type'] as handler name
+        """
+        info = self.event_info_map.get(event.name, None)
+        if info:
+            handler_name = info.get('handler', None)
+            if not handler_name:
+                handler_name = info['type']
+            handler = self.event_handlers[handler_name]
+            handler(event, info)
+
+    def add_request(self, event, info):
+        """
+        Generate a request from event, add it to queue.
+
+        Needed entries of info are:
+        'name': name of the request
+        'type': type of the event. Standard types are 'add', 'submit' and
+                'finish'
+
+        Optional entries:
+        'queue': name of the queue in req_queue. Default: 'type'
+
+        Return the request in the end.
+        """
+        req = self.gen_req(event, info)
+        queue = self.req_queue[info.get('queue', info['type'])]
+        self._handle_req(event.timestamp, queue, info['type'], req)
+        if event.name != 'block_bio_queue':
+            print("FFFFFUCKKKKKKKK ADDDDDD")
+            print(req)
+        return req
+
+    def fifo_mv_request(self, event, info, warn=True):
+        """
+        Move one request from one queue to another, and set timestamp according
+        to type. See Layer._handle_req.
+
+        Needed entries of info are:
+        'type': type of the event. Standard types are 'add', 'submit' and
+                'finish'
+        'src': name of the source request queue
+        'rule': rule to find the request, a function that takes (req, event) as
+                it's arguments, and return True if the req is needed
+
+        If found a request, return the request in the end; else return None.
+        """
+        src = self.req_queue[info['src']]
+        req = src.req_out(info['rule'], event)
+        if req:
+            queue = self.req_queue[info.get('queue', info['type'])]
+            self._handle_req(event.timestamp, queue, info['type'], req)
+            if(event.name == 'handle_aiocb_rw'):
+                print("FFFFFUCKKKKKKKK " + info['type'])
+                print(req)
+        # elif warn:
+        #     print('Throw: ' + str(event), file=sys.stderr)
+        return req
+
+    @classmethod
+    def gen_req(cls, event, info):
+        req = BlkRequest(info['name'])
+        req.read_event(event, cls.req_attrs_map)
+        cls.offset_length_to_byte(req)
         return req
 
     @staticmethod
-    def critique_by_pos(offset, length, req):
+    def rule_by_pos(offset, length, req):
         return req.offset == offset and req.length == length
 
-    def sec2byte(self, sector):
-        return int(sector) * self.SECTOR_SIZE
+    @classmethod
+    def offset_length_to_byte(cls, req):
+        req['offset'] *= cls.SECTOR_SIZE
+        req['length'] *= cls.SECTOR_SIZE
+
+    def add_rwbs_flag(rwbs, action):
+        return rwbs | BlkRequest.RWBS_FLAG[action]
