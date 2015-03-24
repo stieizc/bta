@@ -1,7 +1,11 @@
 import unittest
 import os
 
-from libbta.parser import parser_babeltrace as traceparser
+from libbta.parser import Babeltrace
+
+
+traceparser = Babeltrace(['txt'])
+
 
 class QemuVirtioLayerTestCase(unittest.TestCase):
     def setUp(self):

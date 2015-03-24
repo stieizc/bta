@@ -1,31 +1,15 @@
-import os
-import importlib
-
-
-def parse_dir(_dir):
+def parse_dir(parsers, directory):
     event_queues = []
-    for f in os.listdir(_dir):
-        _file = os.path.join(_dir, f)
-        _, ext = os.path.splitext(f)
-        mod = importlib.import_module('.parser_' + ext[1:], 'libbta.parser')
-        event_queues.append(mod.parse(_file))
-    return merge_events(event_queues)
+    for parser in parsers:
+        event_queues.extend(parser.parse_dir(directory))
+    return merge_sorted(event_queues, lambda e: e.timestamp)
 
 
-def merge_events(event_queues):
-    events = []
-
-    for es in event_queues:
-        events.extend(es)
-    if len(event_queues) > 1:
-        events.sort(key=lambda e: e.timestamp)
-    #event_queues = [es for es in event_queues if es]
-    #while len(event_queues) > 1:
-    #    heads = [es[0] for es in event_queues]
-    #    idx, min_val = min(enumerate(heads), key=lambda p: p[1].timestamp)
-    #    events.append(min_val)
-    #    event_queues[idx].popleft()
-    #    event_queues = [es for es in event_queues if es]
-    #if len(event_queues) == 1:
-    #    events.extend(event_queues[0])
-    return events
+def merge_sorted(lists, key):
+    if len(lists) == 1:
+        return lists[0]
+    merged = []
+    for l in lists:
+        merged.extend(l)
+    merged.sort(key=key)
+    return merged

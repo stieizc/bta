@@ -1,4 +1,4 @@
-import os
+import os.path
 import sys
 import importlib
 
@@ -15,10 +15,11 @@ class ConfigParser:
     def read_file(self):
         """Read contents from self.filepath"""
         self.import_config()
-        self.layers = self.settings.Layers
-        self.deducers = self.settings.Deducers
-        if hasattr(self.settings, 'TraceDir'):
-            _trace_dir = self.settings.TraceDir
+        for k in ['parsers', 'layers', 'deducers']:
+            v = getattr(self.settings, k)
+            setattr(self, k, v if type(v) is list else [v])
+        if hasattr(self.settings, 'trace_dir'):
+            _trace_dir = self.settings.trace_dir
         else:
             _trace_dir = 'traces'
         self.trace_dir = os.path.join(os.path.dirname(self.filepath),

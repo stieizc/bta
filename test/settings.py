@@ -1,7 +1,15 @@
-from libbta.config.types import QemuRawLayer, QemuVirtioLayer, \
-    LinuxBlockLayer, FifoDeducer, VirtioRawDeducer
+from libbta.parser.babeltrace import Babeltrace
 
-Layers = [('guest_blk',
+from libbta.layer.qemu_virtio_layer import QemuVirtioLayer
+from libbta.layer.qemu_raw_layer import QemuRawLayer
+from libbta.layer.linux_block_layer import LinuxBlockLayer
+
+from libbta.layer.deducers import FifoDeducer
+from libbta.layer.deducers import VirtioRawDeducer
+
+parsers = Babeltrace('babel')
+
+layers = [('guest_blk',
            {'class': LinuxBlockLayer,
             'domains': ['debian-fstest.kernel']}),
           ('qemu_virtio',
@@ -11,7 +19,7 @@ Layers = [('guest_blk',
            {'class': QemuRawLayer,
             'domains': ['debc.qemu']})]
 
-Deducers = [(FifoDeducer,
+deducers = [(FifoDeducer,
             {'upper': 'guest_blk',
              'lower': 'qemu_virtio'}),
             (VirtioRawDeducer,

@@ -33,7 +33,7 @@ class Config:
     def generate_events(self):
         self.events = self.event_cache.read()
         if not self.events:
-            self.events = parse_dir(self.configparser.trace_dir)
+            self.events = parse_dir(self.configparser.parsers, self.configparser.trace_dir)
             self.event_cache.update(self.events)
 
     def generate_layers(self):
