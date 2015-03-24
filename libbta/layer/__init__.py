@@ -123,9 +123,6 @@ class BlkLayer(Layer):
         req = self.gen_req(event, info)
         queue = self.req_queue[info.get('queue', info['type'])]
         self._handle_req(event.timestamp, queue, info['type'], req)
-        if event.name != 'block_bio_queue':
-            print("FFFFFUCKKKKKKKK ADDDDDD")
-            print(req)
         return req
 
     def fifo_mv_request(self, event, info, warn=True):
@@ -147,11 +144,8 @@ class BlkLayer(Layer):
         if req:
             queue = self.req_queue[info.get('queue', info['type'])]
             self._handle_req(event.timestamp, queue, info['type'], req)
-            if(event.name == 'handle_aiocb_rw'):
-                print("FFFFFUCKKKKKKKK " + info['type'])
-                print(req)
-        # elif warn:
-        #     print('Throw: ' + str(event), file=sys.stderr)
+        elif warn:
+            print('Throw: ' + str(event), file=sys.stderr)
         return req
 
     @classmethod

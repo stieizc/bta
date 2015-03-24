@@ -3,7 +3,7 @@ import sys
 import importlib
 
 
-class ConfigParser:
+class Reader:
     def __init__(self, path):
         """Bta configuration parser"""
         self.filepath = os.path.realpath(path)
@@ -16,10 +16,10 @@ class ConfigParser:
         """Read contents from self.filepath"""
         self.import_config()
         for k in ['parsers', 'layers', 'deducers']:
-            v = getattr(self.settings, k)
+            v = getattr(self.configs, k)
             setattr(self, k, v if type(v) is list else [v])
-        if hasattr(self.settings, 'trace_dir'):
-            _trace_dir = self.settings.trace_dir
+        if hasattr(self.configs, 'trace_dir'):
+            _trace_dir = self.configs.trace_dir
         else:
             _trace_dir = 'traces'
         self.trace_dir = os.path.join(os.path.dirname(self.filepath),
@@ -28,7 +28,7 @@ class ConfigParser:
     def import_config(self):
         sys.path.append(self.wpath)
         modname, _ = os.path.splitext(self.filename)
-        self.settings = importlib.import_module(modname)
+        self.configs = importlib.import_module(modname)
         sys.path.pop()
 
     def __repr__(self):

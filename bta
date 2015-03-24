@@ -12,11 +12,12 @@ if __name__ == '__main__':
     config = Config()
     config.parse_args()
     print(time.time()-start)
-    start = time.time()
-    sorter = Sorter(config.layermaps)
-    sorter.read_events(config.events)
-    print(time.time()-start)
 
     if config.args.action == 'list-events':
         for e in config.events:
             print(e)
+    else:
+        start = time.time()
+        sorter = Sorter(config.layermaps)
+        sorter.read_events(config.events)
+        print(time.time()-start)
