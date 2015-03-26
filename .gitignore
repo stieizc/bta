@@ -6,4 +6,9 @@ __pycache__/
 
 test/traces/
 test/data/
+test/cache/
 *.cache
+
+venv/
+instance/
+bta.egg-info/
