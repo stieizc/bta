@@ -5,8 +5,12 @@ import click
 
 # Rewrite of blk_analyse
 
+from libbta.traces import Traces
 from libbta.config import Config
 from libbta.sorter import Sorter
+
+
+pass_traces = click.make_pass_decorator(Traces)
 
 
 @click.group()
@@ -32,13 +36,12 @@ def cli(ctx, conf, cwd, cache_dir, trace_dir):
     for path in ['cache_dir', 'trace_dir']:
         if not os.path.exists(config[path]):
             os.makedirs(config[path])
-    ctx.obj['config'] = config
+    ctx.obj = Traces(config)
 
 
 @cli.command()
-@click.pass_context
-def list(ctx):
+@pass_traces
+def list(traces):
+    for event in traces.load():
+        click.echo(event)
     return
-
-def main():
-    cli(obj={})

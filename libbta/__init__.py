@@ -36,7 +36,7 @@ class Request(dict):
                                      super().__repr__())
 
     def read_event(self, event, attrs_map):
-        for new_attr, attr_map in attrs_map.items():
+        for new_attr, attr_map in attrs_map.iteritems():
             attr, _type = attr_map
             if _type and _type != str:
                 self[new_attr] = _type(event[attr])

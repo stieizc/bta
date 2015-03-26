@@ -14,17 +14,3 @@ class Config:
 
     def parse_args(self, conf):
         return Reader(conf).read()
-
-    def generate_layers(self):
-        self.layermaps = []
-        self.deducers = []
-        layers = {}
-        for name, attrs in self.configs.layers:
-            layer = attrs['class'](name)
-            layers[name] = layer
-            self.layermaps.append((layer, attrs['domains']))
-        for deducer_class, attrs in self.configs.deducers:
-            upper = layers[attrs['upper']]
-            lower = layers[attrs['lower']]
-            deducer = deducer_class(upper, lower)
-            self.deducers.append(deducer)

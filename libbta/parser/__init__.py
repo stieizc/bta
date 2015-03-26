@@ -1,8 +1,7 @@
 class TraceParser(dict):
-    def __init__(self, parsers_ext, files_ext):
+    def __init__(self, parsers):
         event_queues = []
-        for ext, parser in extmap.items():
-            files = files_ext.get(ext)
+        for parser, files in extmap.iteritems():
             if files:
                 event_queues.extend(parser.parse_files(files))
         return merge_sorted(event_queues, lambda e: e.timestamp)
