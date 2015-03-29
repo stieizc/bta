@@ -13,8 +13,6 @@ class QemuRawLayer(BlkLayer):
     Rely on deducer for finishing request. It is possible that a request is
     actually finished but never marked so, if the deducer can't decide.
     """
-    QEMU_AIO_FLAG = {1 << 0: 'read', 1 << 1: 'write', 1 << 2: 'ioctl',
-                     1 << 3: 'flush', 1 << 4: 'discard', 1 << 5: 'writez'}
 
     req_attrs_map = {'id': ('acb', str), 'offset': ('sector_num', int),
                      'length': ('nb_sectors', int), 'type': ('type', int)}
@@ -40,7 +38,7 @@ class QemuRawLayer(BlkLayer):
         req = super().gen_req(event, info)
         rwbs = 0
         _type = req['type']
-        for bit, action in cls.QEMU_AIO_FLAG.items():
+        for bit, action in cls.QEMU_AIO_FLAG.iteritems():
             if _type & bit:
                 rwbs = BlkLayer.add_rwbs_flag(rwbs, action)
         req.rwbs = rwbs

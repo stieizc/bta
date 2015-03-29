@@ -1,7 +1,7 @@
 from collections import deque
 
 
-class Event(dict):
+class Trace(dict):
     """
     Basic unit of a trace file and an analysis
     """
@@ -16,6 +16,18 @@ class Event(dict):
         return "{0} {1} {2}".format(self.name, self.timestamp,
                                     super().__repr__())
 
+    def map2dict(self, target, attrs_map):
+        for target_attr, attr_map in attrs_map.iteritems():
+            if target_attr == 'addtional':
+                for k, v in attr_map:
+                    target[k] = v
+            else:
+                attr, _map = attr_map
+                if _map:
+                    target[target_attr] = _map(self[attr])
+                else:
+                    target[target_attr] = self[attr]
+
 
 class Request(dict):
     """
@@ -27,94 +39,25 @@ class Request(dict):
 
     def __init__(self, name):
         self.name = name
-        self.upper_reqs = []
-        self.lower_reqs = []
-        self.merged_reqs = []
+        self._related = {'upper': [], 'lower': [], 'merged': []}
+        self.timestamps = {}
 
     def __repr__(self):
         return "{0}: {1} {2}".format(self.name, self.timestamps,
                                      super().__repr__())
 
-    def read_event(self, event, attrs_map):
-        for new_attr, attr_map in attrs_map.iteritems():
-            attr, _type = attr_map
-            if _type and _type != str:
-                self[new_attr] = _type(event[attr])
-            else:
-                self[new_attr] = event[attr]
-
-    def add_upper_req(self, req):
-        #print("Link {0}\nupper {1}".format(str(self), str(req)))
-        self.upper_reqs.append(req)
-
-    def add_lower_req(self, req):
-        #print("Link {0}\nlower {1}".format(str(self), str(req)))
-        self.lower_reqs.append(req)
-
-    @property
-    def timestamps(self):
-        """Get timestamps"""
-        return {k: self.get(k) for k in ['add_time', 'submit_time',
-                                         'finish_time']}
-
-    @property
-    def add_time(self):
-        """Request add_time or none"""
-        return self['add_time']
-
-    @add_time.setter
-    def add_time(self, timestamp):
-        self['add_time'] = timestamp
-
-    @property
-    def submit_time(self):
-        """Request is submitted for handling"""
-        return self['submit_time']
-
-    @submit_time.setter
-    def submit_time(self, timestamp):
-        self['submit_time'] = timestamp
-
-    @property
-    def finish_time(self):
-        """Request has been handled"""
-        return self['finish_time']
-
-    @finish_time.setter
-    def finish_time(self, timestamp):
-        self['finish_time'] = timestamp
+    def relate(self, name, req):
+        # print("Link {0}\nupper {1}".format(str(self), str(req)))
+        self._related[name].append(req)
 
 
 class BlkRequest(Request):
     """
     Request for Block Service
     """
-    RWBS_FLAG = {'write': 1 << 0, 'discard': 1 << 1, 'read' : 1 << 2,
-                 'rahead': 1 << 3, 'barrier': 1 << 4, 'sync': 1 << 5,
-                 'meta': 1 << 6, 'secure': 1 << 7, 'flush': 1 << 8,
-                 'fua': 1 << 9}
 
-    @property
-    def rwbs(self):
-        return self['rwbs']
-
-    @rwbs.setter
-    def rwbs(self, rwbs):
-        self['rwbs'] = rwbs
-
-    @staticmethod
-    def _op_type(rwbs):
-        return 7 & rwbs
-
-    @property
-    def op_type(self):
-        return self._op_type(self.rwbs)
-
-    def op_type_same(self, req):
-        return  self.op_type == req.op_type
-
-    def op_type_equal(self, rwbs):
-        return  self.op_type == self._op_type(rwbs)
+    def __init__(self, name):
+        super().__init__(name)
 
     @property
     def offset(self):
@@ -131,6 +74,10 @@ class BlkRequest(Request):
     @length.setter
     def length(self, length):
         self['length'] = length
+
+    @property
+    def op_type(self):
+        return self['ops'][0]
 
     @property
     def end(self):

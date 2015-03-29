@@ -1,11 +1,11 @@
-class Sorter:
+class Reconstructor:
     """
-    From a list of events, generate requests for different layers.
+    From a list of traces, reconstruct requests for different layers.
 
     Events happens in different layers, and are associated with requests on
-    each layer. Each request has multiple events, e.g. issued, pended,
-    finished.  Since we have one series of events, but multiple levels of
-    layers, We have to deduce wich event is associated with each layer.
+    each layer. Each request has multiple traces, e.g. issued, pended,
+    finished.  Since we have one series of traces, but multiple levels of
+    layers, We have to deduce wich trace is associated with each layer.
 
     Further more, since requests in different layers are linked (layer1 issued
     a request, layer2 received it and issued another), the relationship between
@@ -26,21 +26,21 @@ class Sorter:
     layer, or associated with one or more "submitted" requests from upper layer
     """
 
-    def __init__(self, layermap):
-        self.layermap = layermap
+    def __init__(self, layers):
+        self.layers = layers
         self.ids = []
 
     def __repr__(self):
-        string = '\n'.join([str(l) for l in self.layermap])
+        string = '\n'.join([str(l) for l in self.layers])
         return string
 
-    def read_events(self, events):
-        for event in events:
-            self.dispatch(event)
-        for layer, _ in self.layermap:
+    def read(self, traces):
+        for trace in traces:
+            self.dispatch(trace)
+        for layer, _ in self.layers:
             print(layer)
 
-    def dispatch(self, event):
-        for layer, domains in self.layermap:
-            if event['domain'] in domains:
-                layer.read_event(event)
+    def dispatch(self, trace):
+        for layer, domains in self.layers:
+            if trace['domain'] in domains:
+                layer.read_trace(trace)

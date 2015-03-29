@@ -1,9 +1,12 @@
 import sys
+from collections import deque
 
 from libbta import BlkRequest
+from libbta import ReqQueue
+from libbta.utils.trigger import Trigger
 
 
-class Layer:
+class Layer(Trigger):
     """
     Layers contain requests. There is a hierarchy of layers:
 
@@ -21,50 +24,27 @@ class Layer:
 
     def __init__(self, name):
         self.name = name
-        self.upper = None
-        self.lower = None
+        self.queues = {}
+        self._related = {}
 
-    def _add_req(self, timestamp, queue, req):
-        self._handle_req(timestamp, queue, 'add', req)
-
-    def _submit_req(self, timestamp, queue, req):
-        self._handle_req(timestamp, queue, 'submit', req)
-
-    def _finish_req(self, timestamp, queue, req):
-        self._handle_req(timestamp, queue, 'finish', req)
-
-    def _handle_req(self, timestamp, queue, event_type, req):
+    def accept_req(self, req, action, timestamp):
         """
-        Set the timestamp according to event_type, add it to a queue, and
-        notice upper and lower deducer with request and event_type
+        Set the timestamp according to action, add it to a queue
         """
-        req[event_type + '_time'] = timestamp
-        queue.append(req)
-        #print("{0}: {1}".format(event_type, str(req)))
-        self.notice_all_deducer(req, event_type)
+        req.timestamps[action] = timestamp
+        self.get_queue(req, action).append(req)
+        self.trigger(action, req)
 
-    def add_upper_deducer(self, upper):
-        self.upper = upper
+    def relate(self, name, layer):
+        self._related[name] = layer
 
-    def add_lower_deducer(self, lower):
-        self.lower = lower
-
-    def notice_all_deducer(self, req, event_type):
-        self.notice_upper_deducer(req, event_type)
-        self.notice_lower_deducer(req, event_type)
-
-    # Notice the reverse of layer position here
-    def notice_upper_deducer(self, req, event_type):
-        if self.upper:
-            self.notice(self.upper, req, event_type, 'lower')
-
-    def notice_lower_deducer(self, req, event_type):
-        if self.lower:
-            self.notice(self.lower, req, event_type, 'upper')
-
-    @staticmethod
-    def notice(deducer, req, event_type, layer):
-        deducer.deduce(req, event_type, layer)
+    # To prevent conflict with 'on'. I'm so smart
+    def when(self, layer_name, event):
+        layer = self._related.get(layer_name)
+        if layer:
+            return layer.on(event)
+        else:
+            return lambda f: f
 
     def __repr__(self):
         return self.name
@@ -75,17 +55,15 @@ class BlkLayer(Layer):
     Block Layer
     """
     SECTOR_SIZE = 512
+    EVENT_TYPES = ['queue', 'submit', 'finish']
 
     def __init__(self, name):
         super().__init__(name)
-        self.event_handlers = {
-                'add': self.add_request,
-                'submit': self.fifo_mv_request,
-                'finish': self.fifo_mv_request}
+        self.init_queues()
 
-    def read_event(self, event):
+    def read_trace(self, trace):
         """
-        Read a event, pass it to *a* proper handler, if any. So a event only
+        Read a trace, pass it to *a* proper handler, if any. So a trace only
         gets handled once.
 
         info is a object passed as argument to standard handlers. If it has a
@@ -98,71 +76,45 @@ class BlkLayer(Layer):
         'handler': if has one, use it as the handler name; otherwise use
                    info['type'] as handler name
         """
-        info = self.event_info_map.get(event.name, None)
-        if info:
-            handler_name = info.get('handler', None)
-            if not handler_name:
-                handler_name = info['type']
-            handler = self.event_handlers[handler_name]
-            handler(event, info)
+        handler = self.trace_handlers.get(trace.name)
+        if callable(handler):
+            handler(trace)
+        elif type(handler) == tuple:
+            self.handle_trace(trace, handler)
 
-    def add_request(self, event, info):
-        """
-        Generate a request from event, add it to queue.
+    def handle_trace(trace, info):
+        action, detail = info
+        if action == 'queue':
+            self.queue_request(trace, *info)
+        else:
+            self.handle_request_fifo(action, trace, *info)
 
-        Needed entries of info are:
-        'name': name of the request
-        'type': type of the event. Standard types are 'add', 'submit' and
-                'finish'
-
-        Optional entries:
-        'queue': name of the queue in req_queue. Default: 'type'
-
-        Return the request in the end.
-        """
-        req = self.gen_req(event, info)
-        queue = self.req_queue[info.get('queue', info['type'])]
-        self._handle_req(event.timestamp, queue, info['type'], req)
+    def queue_request(self, trace, name, attrs_map):
+        req = trace.map2dict(BlkRequest(name), attrs_map)
+        self.accept_req(req, 'queue', trace.timestamp)
         return req
 
-    def fifo_mv_request(self, event, info, warn=True):
+    def handle_request_fifo(self, action, trace, name, attrs_map, src, rule):
         """
         Move one request from one queue to another, and set timestamp according
-        to type. See Layer._handle_req.
-
-        Needed entries of info are:
-        'type': type of the event. Standard types are 'add', 'submit' and
-                'finish'
-        'src': name of the source request queue
-        'rule': rule to find the request, a function that takes (req, event) as
-                it's arguments, and return True if the req is needed
-
-        If found a request, return the request in the end; else return None.
+        to type.
         """
-        src = self.req_queue[info['src']]
-        req = src.req_out(info['rule'], event)
+        event = trace.map2dict({}, attrs_map)
+        src = self.get_queue(event, action)
+        req = src.req_out(rule, event)
         if req:
-            queue = self.req_queue[info.get('queue', info['type'])]
-            self._handle_req(event.timestamp, queue, info['type'], req)
-        elif warn:
+            self.accept_req(req, action, trace.timestamp)
+        else:
             print('Throw: ' + str(event), file=sys.stderr)
         return req
 
     @classmethod
-    def gen_req(cls, event, info):
-        req = BlkRequest(info['name'])
-        req.read_event(event, cls.req_attrs_map)
-        cls.offset_length_to_byte(req)
-        return req
+    def sec2byte(cls, n):
+        return int(n) * cls.SECTOR_SIZE
 
-    @staticmethod
-    def rule_by_pos(offset, length, req):
-        return req.offset == offset and req.length == length
+    def init_queues(self):
+        for t in self.EVENT_TYPES:
+            self.queues[t] = {'read': ReqQueue(), 'write': ReqQueue()}
 
-    @classmethod
-    def offset_length_to_byte(cls, req):
-        req['offset'] *= cls.SECTOR_SIZE
-        req['length'] *= cls.SECTOR_SIZE
-
-    def add_rwbs_flag(rwbs, action):
-        return rwbs | BlkRequest.RWBS_FLAG[action]
+    def get_queue(self, req, action):
+        return self.queues[action][req.op_type]

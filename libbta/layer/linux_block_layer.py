@@ -32,6 +32,7 @@ class LinuxBlockLayer(BlkLayer):
                           'finish': ReqQueue()}
         self.event_handlers['backmerge'] = self.backmerge_request
         self.event_handlers['frontmerge'] = self.frontmerge_request
+        self.event_handlers['submit'] = self.submit_request
         self.event_handlers['finish'] = self.finish_request
 
     def __repr__(self):
@@ -78,12 +79,24 @@ class LinuxBlockLayer(BlkLayer):
             and dest.offset == to_merge.offset + to_merge.length \
             and to_merge.op_type_same(dest)
 
+    def submit_request(self, event, info):
+        if event['nr_sector'] == '0':
+            cmd_len = event.get('_cmd_length')
+            if cmd_len and cmd_len != '0':
+                return None
+        self.fifo_mv_request(event, info, warn=True)
+
     def finish_request(self, event, info):
+        if event['nr_sector'] == '0':
+            cmd_len = event.get('_cmd_length')
+            if cmd_len and cmd_len != '0':
+                return None
         master_req = self.fifo_mv_request(event, info)
         if master_req:
             for req in master_req.merged_reqs:
                 self._finish_req(event.timestamp, self.req_queue['finish'],
                                  req)
+        return master_req
 
     @classmethod
     def rule(cls, req, event):

@@ -2,7 +2,7 @@ import regex
 import re
 
 from .parser import Parser
-from libbta import Event
+from libbta import Trace
 
 
 meta_pattern = re.compile(r"""
@@ -21,20 +21,20 @@ class Babeltrace(Parser):
     @classmethod
     def parse(cls, infile):
         """
-        Read lines from infile, where each line is an event
+        Read lines from infile, where each line is an trace
         """
-        events = []
+        traces = []
         with open(infile, encoding='utf-8') as tracefile:
             for line in tracefile:
                 e = cls.parseline(line)
-                events.append(e)
-        return events
+                traces.append(e)
+        return traces
     
 
     @classmethod
     def parseline(cls, line):
         """
-        Generate event from line
+        Generate trace from line
         """
         meta, attrs = re.split(r': (?={)', line, 1)
     
@@ -49,21 +49,21 @@ class Babeltrace(Parser):
             scope = name_fields[0]
             name = name_fields[1]
     
-        event = Event(name, timestamp)
+        trace = Trace(name, timestamp)
     
-        event['host'] = m.group('host')
-        event['domain'] = m.group('host') + '.' + scope
+        trace['host'] = m.group('host')
+        trace['domain'] = m.group('host') + '.' + scope
     
         # print(attrs)
-        cls.parse_attrs(attrs, event)
-        return event
+        cls.parse_attrs(attrs, trace)
+        return trace
     
 
     @classmethod
-    def parse_attrs(cls, attrs, event):
+    def parse_attrs(cls, attrs, trace):
         for key_vals in attrs_group.findall(attrs.strip()):
     
             for key_val in key_val_pattern.findall(key_vals.strip()):
                 m = key_val_split.match(key_val)
-                event[m.group(1)] = m.group(2)
-        return event
+                trace[m.group(1)] = m.group(2)
+        return trace
