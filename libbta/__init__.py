@@ -46,9 +46,9 @@ class Request(dict):
         return "{0}: {1} {2}".format(self.name, self.timestamps,
                                      super().__repr__())
 
-    def relate(self, name, req):
+    def link(self, _type, req):
         # print("Link {0}\nupper {1}".format(str(self), str(req)))
-        self._related[name].append(req)
+        self._related[_type].append(req)
 
 
 class BlkRequest(Request):

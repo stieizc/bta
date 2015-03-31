@@ -39,12 +39,31 @@ class Layer(Trigger):
         self._related[name] = layer
 
     # To prevent conflict with 'on'. I'm so smart
-    def when(self, layer_name, event):
+    def when(self, layer_name, action):
         layer = self._related.get(layer_name)
         if layer:
-            return layer.on(event)
+            return layer.on(action)
         else:
             return lambda f: f
+
+    @staticmethod
+    def link_reqs_in_queue(queue, rule, self_type, other_type):
+        def find_and_link_with(r):
+            for req in queue:
+                if rule(req, r):
+                    req.link(self_type, r)
+                    r.link(other_type, req)
+        return find_and_link_with
+
+    @classmethod
+    def link_reqs_with_lower(cls, queue, rule):
+        return cls.link_reqs_in_queue(
+            queue, rule, self_type='lower', other_type='upper')
+
+    @classmethod
+    def link_reqs_with_upper(cls, queue, rule):
+        return cls.link_reqs_in_queue(
+            queue, rule, self_type='upper', other_type='lower')
 
     def __repr__(self):
         return self.name
@@ -87,26 +106,32 @@ class BlkLayer(Layer):
         if action == 'queue':
             self.queue_request(trace, *info)
         else:
-            self.handle_request_fifo(action, trace, *info)
+            self.handle_request_fifo(trace, action, info)
 
     def queue_request(self, trace, name, attrs_map):
         req = trace.map2dict(BlkRequest(name), attrs_map)
         self.accept_req(req, 'queue', trace.timestamp)
         return req
 
-    def handle_request_fifo(self, action, trace, name, attrs_map, src, rule):
+    def handle_request_fifo(self, trace, action, info):
         """
         Move one request from one queue to another, and set timestamp according
         to type.
         """
-        event = trace.map2dict({}, attrs_map)
-        src = self.get_queue(event, action)
-        req = src.req_out(rule, event)
+        req = self.fifo_req_out(trace, *info)
         if req:
             self.accept_req(req, action, trace.timestamp)
         else:
             print('Throw: ' + str(event), file=sys.stderr)
         return req
+
+    def fifo_req_out(self, trace, src, rule, attrs_map):
+        if attrs_map:
+            event = trace.map2dict({}, attrs_map)
+        else:
+            event = trace
+        src = self.get_queue(event, src)
+        return src.req_out(rule, event)
 
     @classmethod
     def sec2byte(cls, n):
