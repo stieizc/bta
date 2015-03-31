@@ -32,7 +32,13 @@ class Layer(Trigger):
         Set the timestamp according to action, add it to a queue
         """
         req.timestamps[action] = timestamp
-        self.get_queue(action, req.op_type).append(req)
+        if type(action) == tuple:
+            action, queue = action
+            if callable(queue):
+                queue = queue(req)
+        else:
+            queue = self.get_queue_by_req(action, req)
+        queue.append(req)
         self.trigger(action, req)
 
     def relate(self, name, layer):
@@ -50,7 +56,7 @@ class Layer(Trigger):
 
     def link_reqs_in_queue(self, action, rule, self_type, other_type):
         def find_and_link_with(r):
-            queue = self.get_queue(action, r.op_type)
+            queue = self.get_queue_by_req(action, r)
             for req in queue:
                 rule = getattr(req, rule)
                 if rule(r):
@@ -128,13 +134,13 @@ class BlkLayer(Layer):
 
     def queue_req_out(self, trace, src, rule, attrs_map=None):
         if attrs_map:
-            event = trace.map2dict({}, attrs_map)
+            event = trace.gen_set_event(attrs_map)
         else:
             event = trace
         if callable(src):
             src = src(event)
         elif type(src) == str:
-            src = self.get_queue(src, event['ops'][0])
+            src = self.get_queue_by_trace(src, event)
         return src.req_out(rule, event)
 
     @classmethod
@@ -145,8 +151,11 @@ class BlkLayer(Layer):
         for t in self.EVENT_TYPES:
             self.queues[t] = {'read': ReqQueue(), 'write': ReqQueue()}
 
-    def get_queue(self, action, op_type):
-        return self.queues[action][op_type]
+    def get_queue_by_trace(self, action, trace):
+        return self.queues[action][trace['ops'][0]]
+
+    def get_queue_by_req(self, action, req):
+        return self.queues[action][req.op_type]
 
     def use_default_lower_linker(self):
         self.when('lower', 'queue',

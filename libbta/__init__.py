@@ -8,25 +8,34 @@ class Trace(dict):
     def __init__(self, name, timestamp):
         self.name = name
         self.timestamp = timestamp
+        self.event = None
 
     def __repr__(self):
         """
         Internal Printing
         """
-        return "{0} {1} {2}".format(self.name, self.timestamp,
-                                    super().__repr__())
+        return "{0} {1} {2} {3}".format(
+            self.name, self.timestamp, self.event,
+            super().__repr__())
+
+    def gen_set_event(self, attrs_map):
+        event = self.map2dict({}, attrs_map)
+        self.event = event
+        return event
 
     def map2dict(self, target, attrs_map):
-        for target_attr, attr_map in attrs_map.iteritems():
+        for target_attr, attr in attrs_map.iteritems():
             if target_attr == 'addtional':
-                for k, v in attr_map:
+                # attr will be additional key-value pair
+                for k, v in attr:
                     target[k] = v
             else:
-                attr, _map = attr_map
-                if _map:
+                if type(attr) == tuple:
+                    attr, _map = attr
                     target[target_attr] = _map(self[attr])
                 else:
                     target[target_attr] = self[attr]
+        return target
 
 
 class Request(dict):
@@ -39,7 +48,7 @@ class Request(dict):
 
     def __init__(self, name):
         self.name = name
-        self._related = {'upper': [], 'lower': [], 'merged': []}
+        self.related = {'upper': [], 'lower': [], 'merged': []}
         self.timestamps = {}
 
     def __repr__(self):
@@ -48,7 +57,7 @@ class Request(dict):
 
     def link(self, _type, req):
         # print("Link {0}\nupper {1}".format(str(self), str(req)))
-        self._related[_type].append(req)
+        self.related[_type].append(req)
 
 
 class BlkRequest(Request):

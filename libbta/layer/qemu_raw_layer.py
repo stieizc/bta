@@ -15,7 +15,7 @@ class QemuRawLayer(BlkLayer):
     """
 
     trace_attrs_queue = {
-        'id': ('acb', None), 'offset': ('sector_num', int),
+        'id': 'acb', 'offset': ('sector_num', int),
         'length': ('nb_sectors', int), 'ops': ('type', rwbs.parse_qemu_aio)
         }
 
@@ -26,19 +26,17 @@ class QemuRawLayer(BlkLayer):
                 'queue', ('qemu_raw_rw', self.trace_attrs_queue)
                 ),
             'handle_aiocb_rw': (
-                'submit', ('add', self.rule_submit, None)
+                'submit', ('add', self.rule_submit)
+                )
             }
         self.use_default_lower_linker()
-        @self.when('upper', 'finish')
-        def finish_with_upper(req):
-            
 
-    def __repr__(self):
-        return '\n'.join([
-            super().__repr__(),
-            'Added: ' + str(len(self.req_queue['add'])),
-            'Submitted: ' + str(len(self.req_queue['submit'])),
-            'Finished: ' + str(len(self.req_queue['finish']))])
+        @self.when('upper', 'finish')
+        def finish_with_upper(r):
+            finish_time = r.timestamps['finish']
+            for req in r.related['lower']:
+                if not req.timestamps['finish']:
+                    self.finish_request(req, finish_time)
 
     @staticmethod
     def rule_submit(req, trace):
@@ -47,7 +45,6 @@ class QemuRawLayer(BlkLayer):
             and req['length'] == int(trace['aiocb__aio_nbytes'])
 
     def finish_request(self, req, timestamp):
-        # print("Remove {0}".format(req))
         self.req_queue['submit'].remove(req)
         self.accept_req(req, 'finish', timestamp)
 

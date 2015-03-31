@@ -1,8 +1,9 @@
 from . import BlkLayer
 from . import rules
+from libbta import ReqQueue
 
 trace_attrs_queue = {
-    'id': ('req', None), 'offset': ('sector', BlkLayer.sec2byte),
+    'id': 'req', 'offset': ('sector', BlkLayer.sec2byte),
     'length': ('nsectors', BlkLayer.sec2byte)
     }
 
@@ -22,12 +23,12 @@ class QemuVirtioLayer(BlkLayer):
 
     trace_attrs_submit_read = {
         'offset': ('sector_num', BlkLayer.sec2byte),
-        'length': ('nb_sectors', BlkLayer.sec2byte)
+        'length': ('nb_sectors', BlkLayer.sec2byte),
         'additonal': {'ops': ['read']}
         }
 
     trace_attrs_finish = {
-        'id': ('req', None)
+        'id': 'req'
         }
 
     def __init__(self, name):
@@ -35,19 +36,24 @@ class QemuVirtioLayer(BlkLayer):
         self.trace_handlers = {
             # queue
             'virtio_blk_handle_write': (
-                'queue', ('qemu_virtio_write', self.trace_attrs_queue_write)
+                ('queue', self.queues['queue']['write']),
+                ('qemu_virtio_write', self.trace_attrs_queue_write)
                 ),
             'virtio_blk_handle_read': (
-                'queue', ('qemu_virtio_read', self.trace_attrs_queue_read)
+                ('queue', self.queues['queue']['read']),
+                ('qemu_virtio_read', self.trace_attrs_queue_read)
                 ),
             # submit
             'bdrv_aio_multiwrite': self.submit_write_request,
             'bdrv_aio_readv': (
-                'submit', ('add', rules.same_pos, self.trace_attrs_submit_read)
+                ('submit', self.queues['submit']),
+                (self.queues['queue']['read'],
+                 rules.same_pos, self.trace_attrs_submit_read)
                 ),
             # finish
             'virtio_blk_rw_complete': (
-                'finish', ('submit', rules.same_id, self.trace_attrs_finish)
+                'finish',
+                (self.queues['submit'], rules.same_id, self.trace_attrs_finish)
                 )
             }
         self.use_default_lower_linker()
@@ -58,4 +64,10 @@ class QemuVirtioLayer(BlkLayer):
         """
         for i in range(int(trace['num_callbacks'])):
             req = self.queues['queue']['write'].popleft()
-            self.accept_req(req, trace.timestamp, 'submit')
+            self.accept_req(req, ('submit', self.queues['submit']),
+                            trace.timestamp)
+
+    def init_queues(self):
+        for t in ['queue', 'finish']:
+            self.queues[t] = {'read': ReqQueue(), 'write': ReqQueue()}
+        self.queues['submit'] = ReqQueue()
