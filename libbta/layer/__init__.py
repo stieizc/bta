@@ -32,38 +32,39 @@ class Layer(Trigger):
         Set the timestamp according to action, add it to a queue
         """
         req.timestamps[action] = timestamp
-        self.get_queue(req, action).append(req)
+        self.get_queue(action, req.op_type).append(req)
         self.trigger(action, req)
 
     def relate(self, name, layer):
         self._related[name] = layer
 
     # To prevent conflict with 'on'. I'm so smart
-    def when(self, layer_name, action):
+    def when(self, layer_name, action, f=None):
         layer = self._related.get(layer_name)
         if layer:
-            return layer.on(action)
+            return layer.on(action, f)
+        else if f:
+            return f
         else:
-            return lambda f: f
+            return lambda ff: ff
 
-    @staticmethod
-    def link_reqs_in_queue(queue, rule, self_type, other_type):
+    def link_reqs_in_queue(self, action, rule, self_type, other_type):
         def find_and_link_with(r):
+            queue = self.get_queue(action, r.op_type)
             for req in queue:
-                if rule(req, r):
+                rule = getattr(req, rule)
+                if rule(r):
                     req.link(self_type, r)
                     r.link(other_type, req)
         return find_and_link_with
 
-    @classmethod
-    def link_reqs_with_lower(cls, queue, rule):
-        return cls.link_reqs_in_queue(
-            queue, rule, self_type='lower', other_type='upper')
+    def link_reqs_with_lower(self, action, rule):
+        return self.link_reqs_in_queue(
+            action, rule, self_type='lower', other_type='upper')
 
-    @classmethod
-    def link_reqs_with_upper(cls, queue, rule):
-        return cls.link_reqs_in_queue(
-            queue, rule, self_type='upper', other_type='lower')
+    def link_reqs_with_upper(self, action, rule):
+        return self.link_reqs_in_queue(
+            action, rule, self_type='upper', other_type='lower')
 
     def __repr__(self):
         return self.name
@@ -106,31 +107,34 @@ class BlkLayer(Layer):
         if action == 'queue':
             self.queue_request(trace, *info)
         else:
-            self.handle_request_fifo(trace, action, info)
+            self.queue_req_mv(trace, action, info)
 
     def queue_request(self, trace, name, attrs_map):
         req = trace.map2dict(BlkRequest(name), attrs_map)
         self.accept_req(req, 'queue', trace.timestamp)
         return req
 
-    def handle_request_fifo(self, trace, action, info):
+    def queue_req_mv(self, trace, action, info):
         """
         Move one request from one queue to another, and set timestamp according
         to type.
         """
-        req = self.fifo_req_out(trace, *info)
+        req = self.queue_req_out(trace, *info)
         if req:
             self.accept_req(req, action, trace.timestamp)
         else:
             print('Throw: ' + str(event), file=sys.stderr)
         return req
 
-    def fifo_req_out(self, trace, src, rule, attrs_map):
+    def queue_req_out(self, trace, src, rule, attrs_map=None):
         if attrs_map:
             event = trace.map2dict({}, attrs_map)
         else:
             event = trace
-        src = self.get_queue(event, src)
+        if callable(src):
+            src = src(event)
+        elif type(src) == str:
+            src = self.get_queue(src, event['ops'][0])
         return src.req_out(rule, event)
 
     @classmethod
@@ -141,5 +145,9 @@ class BlkLayer(Layer):
         for t in self.EVENT_TYPES:
             self.queues[t] = {'read': ReqQueue(), 'write': ReqQueue()}
 
-    def get_queue(self, req, action):
-        return self.queues[action][req.op_type]
+    def get_queue(self, action, op_type):
+        return self.queues[action][op_type]
+
+    def use_default_lower_linker(self):
+        self.when('lower', 'queue',
+                  self.link_reqs_with_lower('submit', 'overlaps'))

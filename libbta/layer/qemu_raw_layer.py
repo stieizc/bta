@@ -15,7 +15,7 @@ class QemuRawLayer(BlkLayer):
     """
 
     trace_attrs_queue = {
-        'id': ('acb', str), 'offset': ('sector_num', int),
+        'id': ('acb', None), 'offset': ('sector_num', int),
         'length': ('nb_sectors', int), 'ops': ('type', rwbs.parse_qemu_aio)
         }
 
@@ -28,6 +28,10 @@ class QemuRawLayer(BlkLayer):
             'handle_aiocb_rw': (
                 'submit', ('add', self.rule_submit, None)
             }
+        self.use_default_lower_linker()
+        @self.when('upper', 'finish')
+        def finish_with_upper(req):
+            
 
     def __repr__(self):
         return '\n'.join([
@@ -45,7 +49,7 @@ class QemuRawLayer(BlkLayer):
     def finish_request(self, req, timestamp):
         # print("Remove {0}".format(req))
         self.req_queue['submit'].remove(req)
-        self._finish_req(timestamp, self.req_queue['finish'], req)
+        self.accept_req(req, 'finish', timestamp)
 
     # Override BlkLayer
     def init_queues(self):

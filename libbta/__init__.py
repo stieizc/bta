@@ -81,13 +81,13 @@ class BlkRequest(Request):
 
     @property
     def end(self):
-        return self.offset + self.length - 1
+        return self['offset'] + self['length'] - 1
 
     def contains(self, req):
-        return self.offset <= req.offset and self.end >= req.end
+        return self['offset'] <= req['offset'] and self['end'] >= req['end']
 
     def overlaps(self, req):
-        return self.offset <= req.end and req.offset <= self.end
+        return self['offset'] <= req['end'] and req['offset'] <= self['end']
 
 
 class ReqQueue(deque):

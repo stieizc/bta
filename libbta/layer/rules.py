@@ -1,3 +1,4 @@
+# For matching req by trace
 def same_pos(req, trace):
     return same_props(req, trace, ['offset', 'length'])
 

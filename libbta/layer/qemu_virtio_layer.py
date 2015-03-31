@@ -2,7 +2,7 @@ from . import BlkLayer
 from . import rules
 
 trace_attrs_queue = {
-    'id': ('req',), 'offset': ('sector', BlkLayer.sec2byte),
+    'id': ('req', None), 'offset': ('sector', BlkLayer.sec2byte),
     'length': ('nsectors', BlkLayer.sec2byte)
     }
 
@@ -23,10 +23,11 @@ class QemuVirtioLayer(BlkLayer):
     trace_attrs_submit_read = {
         'offset': ('sector_num', BlkLayer.sec2byte),
         'length': ('nb_sectors', BlkLayer.sec2byte)
+        'additonal': {'ops': ['read']}
         }
 
     trace_attrs_finish = {
-        'id': ('req', )
+        'id': ('req', None)
         }
 
     def __init__(self, name):
@@ -49,7 +50,7 @@ class QemuVirtioLayer(BlkLayer):
                 'finish', ('submit', rules.same_id, self.trace_attrs_finish)
                 )
             }
-        self.when('lower', 'add', self.link_reqs_with_lower(self.))
+        self.use_default_lower_linker()
 
     def submit_write_request(self, trace):
         """
