@@ -1,10 +1,7 @@
-class ConfigError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-    def __str__(self):
-        return self.msg
+class TraceDiscarded(Exception):
+    msg = "No matching request found for trace"
+    def __init__(self, trace):
+        self.trace = trace
 
-class FifoRequestNotFound(Exception):
-    msg = "Required request not found in FIFO"
-    def __str__(self):
-        return FifoRequestNotFound.msg
+    def __repr__(self):
+        return self.msg

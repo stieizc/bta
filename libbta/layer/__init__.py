@@ -37,7 +37,7 @@ class Layer(Trigger):
             if callable(queue):
                 queue = queue(req)
         else:
-            queue = self.get_queue_by_req(action, req)
+            queue = self.get_queue(action, req)
         queue.append(req)
         self.trigger(action, req)
 
@@ -56,7 +56,7 @@ class Layer(Trigger):
 
     def link_reqs_in_queue(self, action, rule, self_type, other_type):
         def find_and_link_with(r):
-            queue = self.get_queue_by_req(action, r)
+            queue = self.get_queue(action, r)
             for req in queue:
                 rule = getattr(req, rule)
                 if rule(r):
@@ -110,10 +110,12 @@ class BlkLayer(Layer):
 
     def handle_trace(trace, info):
         action, detail = info
-        if action == 'queue':
-            self.queue_request(trace, *info)
-        else:
-            self.queue_req_mv(trace, action, info)
+        try:
+            if action == 'queue':
+                self.queue_request(trace, *info)
+            else:
+                self.queue_req_mv(trace, action, info)
+        except 
 
     def queue_request(self, trace, name, attrs_map):
         req = trace.map2dict(BlkRequest(name), attrs_map)
@@ -126,10 +128,7 @@ class BlkLayer(Layer):
         to type.
         """
         req = self.queue_req_out(trace, *info)
-        if req:
-            self.accept_req(req, action, trace.timestamp)
-        else:
-            print('Throw: ' + str(event), file=sys.stderr)
+        self.accept_req(req, action, trace.timestamp)
         return req
 
     def queue_req_out(self, trace, src, rule, attrs_map=None):
@@ -140,7 +139,7 @@ class BlkLayer(Layer):
         if callable(src):
             src = src(event)
         elif type(src) == str:
-            src = self.get_queue_by_trace(src, event)
+            src = self.get_queue(src, event)
         return src.req_out(rule, event)
 
     @classmethod
@@ -151,11 +150,15 @@ class BlkLayer(Layer):
         for t in self.EVENT_TYPES:
             self.queues[t] = {'read': ReqQueue(), 'write': ReqQueue()}
 
-    def get_queue_by_trace(self, action, trace):
-        return self.queues[action][trace['ops'][0]]
+    def get_queue(self, action, event):
+        return self.get_queue_by_event_op(action, event)
 
-    def get_queue_by_req(self, action, req):
-        return self.queues[action][req.op_type]
+    def get_queue_by_event_op(self, action, event):
+        # Note event could be generate from trace or just a request
+        return self.get_queue_by_op(action, event['ops'][0])
+
+    def get_queue_by_op(self, action, op_type):
+        return self.queues[action][op_type]
 
     def use_default_lower_linker(self):
         self.when('lower', 'queue',

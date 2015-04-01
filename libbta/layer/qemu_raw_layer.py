@@ -26,7 +26,7 @@ class QemuRawLayer(BlkLayer):
                 'queue', ('qemu_raw_rw', self.trace_attrs_queue)
                 ),
             'handle_aiocb_rw': (
-                'submit', ('add', self.rule_submit)
+                'submit', ('queue', self.rule_submit)
                 )
             }
         self.use_default_lower_linker()
@@ -53,5 +53,5 @@ class QemuRawLayer(BlkLayer):
         for t in self.EVENT_TYPES:
             self.queues[t] = ReqQueue()
 
-    def get_queue(self, req, action):
+    def get_queue(self, action, event):
         return self.queues[action]

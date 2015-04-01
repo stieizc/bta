@@ -24,19 +24,25 @@ class Trace(dict):
         return event
 
     def map2dict(self, target, attrs_map):
-        for target_attr, attr in attrs_map.iteritems():
-            if target_attr == 'addtional':
+        for t_attr, attr in attrs_map.iteritems():
+            if t_attr == 'addtional':
                 # attr will be additional key-value pair
                 for k, v in attr:
                     target[k] = v
+            elif t_attr == 'optional':
+                for _t, _a in attr:
+                    self._map_attr_to(target, _t, _a, self.get)
             else:
-                if type(attr) == tuple:
-                    attr, _map = attr
-                    target[target_attr] = _map(self[attr])
-                else:
-                    target[target_attr] = self[attr]
+                self._map_attr_to(target, t_attr, attr, self.__getitem__)
         return target
 
+    @staticmethod
+    def _map_attr_to(target, t_attr, attr, method):
+        if type(attr) == tuple:
+            attr, _map = attr
+            target[t_attr] = _map(method(attr))
+        else:
+            target[t_attr] = method(attr)
 
 class Request(dict):
     """
@@ -85,10 +91,6 @@ class BlkRequest(Request):
         self['length'] = length
 
     @property
-    def op_type(self):
-        return self['ops'][0]
-
-    @property
     def end(self):
         return self['offset'] + self['length'] - 1
 
@@ -108,4 +110,3 @@ class ReqQueue(deque):
             if critique(req, event):
                 del self[idx]
                 return req
-        return None
