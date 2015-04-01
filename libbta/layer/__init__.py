@@ -1,8 +1,10 @@
 import sys
 from collections import deque
 
+from libbta import Event
 from libbta import BlkRequest
-from libbta import ReqQueue
+from libbta.request_queue import ReqQueue
+from libbta.exceptions import EventDiscarded
 from libbta.utils.trigger import Trigger
 
 
@@ -27,18 +29,12 @@ class Layer(Trigger):
         self.queues = {}
         self._related = {}
 
-    def accept_req(self, req, action, timestamp):
+    def accept_req(self, req, event, action, dest):
         """
         Set the timestamp according to action, add it to a queue
         """
-        req.timestamps[action] = timestamp
-        if type(action) == tuple:
-            action, queue = action
-            if callable(queue):
-                queue = queue(req)
-        else:
-            queue = self.get_queue(action, req)
-        queue.append(req)
+        req.add_event(action, event)
+        dest.append(req)
         self.trigger(action, req)
 
     def relate(self, name, layer):
@@ -106,36 +102,40 @@ class BlkLayer(Layer):
         if callable(handler):
             handler(trace)
         elif type(handler) == tuple:
-            self.handle_trace(trace, handler)
+            self.handle_trace(trace, *handler)
 
-    def handle_trace(trace, info):
-        action, detail = info
-        try:
-            if action == 'queue':
-                self.queue_request(trace, *info)
-            else:
-                self.queue_req_mv(trace, action, info)
-        except 
+    def handle_trace(self, trace, action, info, attrs_map=None):
+        # First generate event from trace
+        event = Event(trace, attrs_map)
 
-    def queue_request(self, trace, name, attrs_map):
-        req = trace.map2dict(BlkRequest(name), attrs_map)
-        self.accept_req(req, 'queue', trace.timestamp)
-        return req
-
-    def queue_req_mv(self, trace, action, info):
-        """
-        Move one request from one queue to another, and set timestamp according
-        to type.
-        """
-        req = self.queue_req_out(trace, *info)
-        self.accept_req(req, action, trace.timestamp)
-        return req
-
-    def queue_req_out(self, trace, src, rule, attrs_map=None):
-        if attrs_map:
-            event = trace.gen_set_event(attrs_map)
+        # Then find the destination
+        if type(action) == tuple:
+            action, dest = action
+            if callable(dest):
+                dest = dest(action, event)
         else:
-            event = trace
+            dest = self.get_queue(action, event)
+
+        if action == 'queue':
+            return self.queue_request(event, info, dest=dest)
+        else:
+            return self.queue_req_mv(event, action, info, dest=dest)
+
+    def queue_request(self, event, name, dest):
+        req = BlkRequest(name, event)
+        self.accept_req(req, event, 'queue', dest)
+        return req
+
+    def queue_req_mv(self, event, action, info, dest):
+        """
+        Move one request from one queue to another, and set event according
+        to action.
+        """
+        req = self.queue_req_out(event, *info)
+        self.accept_req(req, event, action, dest)
+        return req
+
+    def queue_req_out(self, event, src, rule):
         if callable(src):
             src = src(event)
         elif type(src) == str:

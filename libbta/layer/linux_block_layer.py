@@ -1,8 +1,18 @@
 import sys
 
 from . import BlkLayer
+from libbta import Event
 from libbta.utils import rwbs
+from libbta.exceptions import EventDiscarded
 
+
+trace_attrs = {
+        'offset': ('sector', int), 'length': ('nr_sector', int),
+        'dev': 'dev', 'ops': ('rwbs', rwbs.parse_bio),
+        }
+
+trace_attrs_submit_finish = trace_attrs.copy()
+trace_attrs_submit_finish['cmd_length'] = ('_cmd_length', int)
 
 class LinuxBlockLayer(BlkLayer):
     """
@@ -13,25 +23,21 @@ class LinuxBlockLayer(BlkLayer):
                      -> merge
     """
 
-    trace_attrs = {
-            'offset': ('sector', int), 'length': ('nr_sector', int),
-            'dev': 'dev', 'ops': ('rwbs', rwbs.parse_bio),
-            'optional': {'cmd_length': ('_cmd_length', int)},
-            }
-
     def __init__(self, name):
         super().__init__(name)
         self.trace_handlers = {
             'block_bio_queue': (
-                'queue', ('block_bio', self.trace_attrs)
+                'queue', 'block_bio', trace_attrs
                 ),
             'block_rq_issue': (
                 'submit',
-                ('queue', self.rule, self.trace_attrs)
+                ('queue', self.rule),
+                trace_attrs_submit_finish
                 ),
             'block_rq_complete': (
                 'finish',
-                ('submit', self.rule, self.trace_attrs)
+                ('submit', self.rule),
+                trace_attrs_submit_finish
                 ),
             'block_bio_backmerge': self.backmerge_request,
             'block_bio_frontmerge': self.frontmerge_request,
@@ -40,7 +46,7 @@ class LinuxBlockLayer(BlkLayer):
     def submit_request(self, trace):
         event = trace.gen_set_event(self.trace_attrs)
         if self.is_scsi(event):
-            return
+            raise EventDiscarded(event)
         return self.fifo_mv_request(event, info, warn=True)
 
     def finish_request(self, event, info):

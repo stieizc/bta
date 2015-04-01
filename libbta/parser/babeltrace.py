@@ -2,7 +2,6 @@ import regex
 import re
 
 from .parser import Parser
-from libbta import Trace
 
 
 meta_pattern = re.compile(r"""
@@ -36,20 +35,19 @@ class Babeltrace(Parser):
         """
         Generate trace from line
         """
+        trace = {}
+
         meta, attrs = re.split(r': (?={)', line, 1)
-    
         m = meta_pattern.match(meta)
-        timestamp = float(m.group('timestamp'))
+        trace['timestamp'] = float(m.group('timestamp'))
         fullname = m.group('fullname')
         name_fields = fullname.split(':')
         if len(name_fields) == 1:
             scope = 'kernel'
-            name = fullname
+            trace['name'] = fullname
         else:
             scope = name_fields[0]
-            name = name_fields[1]
-    
-        trace = Trace(name, timestamp)
+            trace['name'] = name_fields[1]
     
         trace['host'] = m.group('host')
         trace['domain'] = m.group('host') + '.' + scope

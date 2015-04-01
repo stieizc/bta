@@ -1,6 +1,7 @@
 from . import BlkLayer
 from . import rules
-from libbta import ReqQueue
+from libbta import Event
+from libbta.request_queue import ReqQueue
 
 trace_attrs_queue = {
     'id': 'req', 'offset': ('sector', BlkLayer.sec2byte),
@@ -37,24 +38,28 @@ class QemuVirtioLayer(BlkLayer):
             # queue
             'virtio_blk_handle_write': (
                 ('queue', self.queues['queue']['write']),
-                ('qemu_virtio_write', self.trace_attrs_queue_write)
+                'qemu_virtio_write',
+                self.trace_attrs_queue_write,
                 ),
             'virtio_blk_handle_read': (
                 ('queue', self.queues['queue']['read']),
-                ('qemu_virtio_read', self.trace_attrs_queue_read)
+                'qemu_virtio_read',
+                self.trace_attrs_queue_read,
                 ),
             # submit
             'bdrv_aio_multiwrite': self.submit_write_request,
             'bdrv_aio_readv': (
                 ('submit', self.queues['submit']),
                 (self.queues['queue']['read'],
-                 rules.same_pos, self.trace_attrs_submit_read)
+                 rules.same_pos),
+                self.trace_attrs_submit_read,
                 ),
             # finish
             'virtio_blk_rw_complete': (
                 'finish',
-                (self.queues['submit'], rules.same_id, self.trace_attrs_finish)
-                )
+                (self.queues['submit'], rules.same_id),
+                self.trace_attrs_finish,
+                ),
             }
         self.use_default_lower_linker()
 
@@ -64,8 +69,7 @@ class QemuVirtioLayer(BlkLayer):
         """
         for i in range(int(trace['num_callbacks'])):
             req = self.queues['queue']['write'].popleft()
-            self.accept_req(req, ('submit', self.queues['submit']),
-                            trace.timestamp)
+            self.accept_req(req, Event(trace), 'submit', self.queues['submit'])
 
     def init_queues(self):
         for t in ['queue', 'finish']:

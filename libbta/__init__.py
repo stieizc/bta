@@ -1,50 +1,31 @@
 from collections import deque
 
 
-class Trace(dict):
+class Event(dict):
     """
     Basic unit of a trace file and an analysis
     """
-    def __init__(self, name, timestamp):
-        self.name = name
-        self.timestamp = timestamp
-        self.event = None
+    def __init__(self, trace, attrs_map=None):
+        self.trace = trace
+        if attrs_map:
+            self.filter_trace(attrs_map)
 
     def __repr__(self):
         """
         Internal Printing
         """
-        return "{0} {1} {2} {3}".format(
-            self.name, self.timestamp, self.event,
-            super().__repr__())
+        return "{0} {1}".format(super().__repr__(), self.event)
 
-    def gen_set_event(self, attrs_map):
-        event = self.map2dict({}, attrs_map)
-        self.event = event
-        return event
-
-    def map2dict(self, target, attrs_map):
+    def filter_trace(self, attrs_map):
         for t_attr, attr in attrs_map.iteritems():
-            if t_attr == 'addtional':
-                # attr will be additional key-value pair
-                for k, v in attr:
-                    target[k] = v
-            elif t_attr == 'optional':
-                for _t, _a in attr:
-                    self._map_attr_to(target, _t, _a, self.get)
+            if type(attr) == tuple:
+                attr, _map = attr
+                self[t_attr] = _map(self.trace[attr])
             else:
-                self._map_attr_to(target, t_attr, attr, self.__getitem__)
-        return target
+                self[t_attr] = self.trace[attr]
 
-    @staticmethod
-    def _map_attr_to(target, t_attr, attr, method):
-        if type(attr) == tuple:
-            attr, _map = attr
-            target[t_attr] = _map(method(attr))
-        else:
-            target[t_attr] = method(attr)
 
-class Request(dict):
+class Request:
     """
     Basic unit of analysis
 
@@ -52,14 +33,21 @@ class Request(dict):
     different layers may be connected.
     """
 
-    def __init__(self, name):
+    def __init__(self, name, generator):
         self.name = name
         self.related = {'upper': [], 'lower': [], 'merged': []}
-        self.timestamps = {}
+        self.events = {}
+        self.generator = generator
 
     def __repr__(self):
-        return "{0}: {1} {2}".format(self.name, self.timestamps,
-                                     super().__repr__())
+        return "{0}: {1}\n{2}".format(
+            self.name, super().__repr__(), "\n".join(self.events))
+
+    def __getitem__(self, item):
+        return self.generator[item]
+
+    def add_event(self, name, event):
+        self.events[name] = event
 
     def link(self, _type, req):
         # print("Link {0}\nupper {1}".format(str(self), str(req)))
@@ -71,42 +59,14 @@ class BlkRequest(Request):
     Request for Block Service
     """
 
-    def __init__(self, name):
-        super().__init__(name)
+    @staticmethod
+    def endof(_dict):
+        return _dict['offset'] + _dict['length'] - 1
 
-    @property
-    def offset(self):
-        return self['offset']
+    def contains(self, _dict):
+        return self['offset'] <= _dict['offset'] and \
+            self.endof(self) >= self.endof(_dict)
 
-    @offset.setter
-    def offset(self, offset):
-        self['offset'] = offset
-
-    @property
-    def length(self):
-        return self['length']
-
-    @length.setter
-    def length(self, length):
-        self['length'] = length
-
-    @property
-    def end(self):
-        return self['offset'] + self['length'] - 1
-
-    def contains(self, req):
-        return self['offset'] <= req['offset'] and self['end'] >= req['end']
-
-    def overlaps(self, req):
-        return self['offset'] <= req['end'] and req['offset'] <= self['end']
-
-
-class ReqQueue(deque):
-    """
-    FIFO queue of requests, sort by add_time
-    """
-    def req_out(self, critique, event):
-        for req, idx in zip(self, range(len(self))):
-            if critique(req, event):
-                del self[idx]
-                return req
+    def overlaps(self, _dict):
+        return self['offset'] <= self.endof(_dict) and \
+            _dict['offset'] <= self.endof(self)
