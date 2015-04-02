@@ -1,7 +1,7 @@
 from . import BlkLayer
 from . import rules
-from libbta import Event
-from libbta.request_queue import ReqQueue
+from fta import Event
+from fta.request_queue import ReqQueue
 
 trace_attrs_queue = {
     'id': 'req', 'offset': ('sector', BlkLayer.sec2byte),

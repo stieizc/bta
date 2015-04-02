@@ -13,7 +13,7 @@ class Cache:
             self.caches[name]['deps'].extend(deps)
         else:
             self.caches[name] = {'file': self.get_cache_name(name),
-                                 'deps': deps, 'data', None}
+                                 'deps': deps, 'data': None}
 
     def chain(self, name, other_names):
         other_names = other_names if type(other_names) is list \

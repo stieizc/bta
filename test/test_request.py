@@ -1,6 +1,6 @@
 import unittest
 
-from libbta import Request
+from fta import Request
 
 class RequestTestCase(unittest.TestCase):
     def setUp(self):

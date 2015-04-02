@@ -1,6 +1,6 @@
 import unittest, os
 
-from libbta.config.configparser import ConfigParser
+from fta.config.configparser import ConfigParser
 
 
 class ConfigReaderTestCase(unittest.TestCase):

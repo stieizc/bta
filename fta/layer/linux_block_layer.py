@@ -1,9 +1,9 @@
 from . import BlkLayer
 from . import rules
-from libbta import Event
-from libbta.utils import rwbs
-from libbta.exceptions import EventDiscarded
-from libbta.exceptions import MergeFailed
+from fta import Event
+from fta.utils import rwbs
+from fta.exceptions import EventDiscarded
+from fta.exceptions import MergeFailed
 
 
 trace_attrs = {

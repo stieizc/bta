@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from libbta.parser import Babeltrace
+from fta.parser import Babeltrace
 
 
 traceparser = Babeltrace(['txt'])

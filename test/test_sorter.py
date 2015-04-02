@@ -1,10 +1,10 @@
 import unittest, os
 
-from libbta.sorter import Sorter
-from libbta.parser import parser_babeltrace as traceparser
-from libbta.layer.qemu_virtio_layer import QemuVirtioLayer
-from libbta.layer.qemu_raw_layer import QemuRawLayer
-from libbta.layer.deducers import VirtioRawDeducer
+from fta.sorter import Sorter
+from fta.parser import parser_babeltrace as traceparser
+from fta.layer.qemu_virtio_layer import QemuVirtioLayer
+from fta.layer.qemu_raw_layer import QemuRawLayer
+from fta.layer.deducers import VirtioRawDeducer
 
 
 class SorterTestCase(unittest.TestCase):

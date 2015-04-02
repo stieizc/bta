@@ -1,8 +1,8 @@
 import os
 
-from libbta.cache import Cache
-from libbta.parser import TraceParser
-from libbta.reconstructor import Reconstructor
+from fta.cache import Cache
+from fta.parser import TraceParser
+from fta.reconstructor import Reconstructor
 
 
 class Traces:

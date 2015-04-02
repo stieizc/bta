@@ -5,9 +5,8 @@ import click
 
 # Rewrite of blk_analyse
 
-from libbta.traces import Traces
-from libbta.config import Config
-from libbta.sorter import Sorter
+from fta.config import Config
+from fta.traces import Traces
 
 
 pass_traces = click.make_pass_decorator(Traces)
@@ -24,7 +23,7 @@ conf file]')
 @click.option('-t', '--trace_dir', default='traces', show_default=True,
               help='Directory for storing traces')
 @click.pass_context
-def cli(ctx, conf, cwd, cache_dir, trace_dir):
+def main(ctx, conf, cwd, cache_dir, trace_dir):
     """
     Block trace analyser
     """
@@ -39,7 +38,7 @@ def cli(ctx, conf, cwd, cache_dir, trace_dir):
     ctx.obj = Traces(config)
 
 
-@cli.command()
+@main.command()
 @pass_traces
 def list(traces):
     for event in traces.load():

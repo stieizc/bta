@@ -1,8 +1,8 @@
-from libbta import Event
-from libbta import BlkRequest
-from libbta.request_queue import ReqQueue
-from libbta.exceptions import EventDiscarded
-from libbta.utils.trigger import Trigger
+from fta import Event
+from fta import BlkRequest
+from fta.request_queue import ReqQueue
+from fta.exceptions import EventDiscarded
+from fta.utils.trigger import Trigger
 
 
 class Layer(Trigger):

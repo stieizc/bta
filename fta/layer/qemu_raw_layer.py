@@ -1,7 +1,7 @@
 from . import BlkLayer
 from . import rules
-from libbta import ReqQueue
-from libbta.utils import rwbs
+from fta import ReqQueue
+from fta.utils import rwbs
 
 
 class QemuRawLayer(BlkLayer):

@@ -1,7 +1,7 @@
 import babeltrace
 
 from .parser import Parser
-from libbta import Trace
+from fta import Trace
 
 
 class CBabeltrace(Parser): 

@@ -1,7 +1,7 @@
 import unittest, os
 
-from libbta.parser import parser_babeltrace as traceparser
-from libbta.layer.linux_block_layer import LinuxBlockLayer
+from fta.parser import parser_babeltrace as traceparser
+from fta.layer.linux_block_layer import LinuxBlockLayer
 
 class LinuxBlockLayerTestCase(unittest.TestCase):
     def setUp(self):
