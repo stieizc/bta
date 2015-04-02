@@ -1,18 +1,20 @@
-import sys
-
 from . import BlkLayer
+from . import rules
 from libbta import Event
 from libbta.utils import rwbs
 from libbta.exceptions import EventDiscarded
+from libbta.exceptions import MergeFailed
 
 
 trace_attrs = {
-        'offset': ('sector', int), 'length': ('nr_sector', int),
-        'dev': 'dev', 'ops': ('rwbs', rwbs.parse_bio),
-        }
+    'offset': ('sector', BlkLayer.sec2byte),
+    'length': ('nr_sector', BlkLayer.sec2byte),
+    'dev': 'dev', 'ops': ('rwbs', rwbs.parse_bio),
+    }
 
 trace_attrs_submit_finish = trace_attrs.copy()
 trace_attrs_submit_finish['cmd_length'] = ('_cmd_length', int)
+
 
 class LinuxBlockLayer(BlkLayer):
     """
@@ -26,86 +28,95 @@ class LinuxBlockLayer(BlkLayer):
     def __init__(self, name):
         super().__init__(name)
         self.trace_handlers = {
-            'block_bio_queue': (
-                'queue', 'block_bio', trace_attrs
+            'block_bio_queue': self.handler_gen_req(
+                'block_bio',
+                dest=self.get_queue_req_op('queue'),
+                attrs=trace_attrs,
                 ),
-            'block_rq_issue': (
+            'block_rq_issue': self.handler_mv_req_with_discard(
                 'submit',
-                ('queue', self.rule),
-                trace_attrs_submit_finish
+                dest=self.get_queue_req_op('submit'),
+                src=self.get_queue_req_op('queue'),
+                rule=self.rule,
+                attrs=trace_attrs_submit_finish,
+                discard=self.is_scsi,
                 ),
-            'block_rq_complete': (
+            'block_rq_complete': self.handler_mv_req_with_discard(
                 'finish',
-                ('submit', self.rule),
-                trace_attrs_submit_finish
+                dest=self.get_queue_req_op('finish'),
+                src=self.get_queue_req_op('submit'),
+                rule=self.rule,
+                attrs=trace_attrs_submit_finish,
+                discard=self.is_scsi,
                 ),
-            'block_bio_backmerge': self.backmerge_request,
-            'block_bio_frontmerge': self.frontmerge_request,
+            'block_bio_backmerge': self.merge_request(
+                self.rule_backmerge,
+                self._backmerge,
+                ),
+            'block_bio_frontmerge': self.merge_request(
+                self.rule_frontmerge,
+                self._frontmerge,
+                )
             }
+        self.when(
+            'lower', 'queue',
+            self.link_with_lower_from(
+                self.get_queue_req_op('submit'), 'overlaps')
+            )
 
-    def submit_request(self, trace):
-        event = trace.gen_set_event(self.trace_attrs)
-        if self.is_scsi(event):
-            raise EventDiscarded(event)
-        return self.fifo_mv_request(event, info, warn=True)
+        @self.on('finish')
+        def finish_merged_request(master_req):
+            merged_reqs = master_req.related['merged']
+            if not merged_reqs:
+                return
+            event = master_req.events['finish']
+            dest = self.queues['finish'][master_req.op_type]
+            for req in merged_reqs:
+                self.accept_req(req, event, 'finish', dest)
 
-    def finish_request(self, event, info):
-        if event['nr_sector'] == '0':
-            cmd_len = event.get('_cmd_length')
-            if cmd_len and cmd_len != '0':
-                return None
-        master_req = self.fifo_mv_request(event, info)
-        if master_req:
-            for req in master_req.merged_reqs:
-                self._finish_req(event.timestamp, self.req_queue['finish'],
-                                 req)
-        return master_req
+    @staticmethod
+    def _backmerge(to_merge, master):
+        master['length'] += to_merge['length']
 
-    def backmerge_request(self, event, info):
-        to_merge = self.req_queue['add'].req_out(self.rule, event)
+    @staticmethod
+    def rule_backmerge(to_merge, master):
+        return to_merge['dev'] == master['dev'] and \
+            to_merge['offset'] == master['offset'] + master['length']
 
-        if to_merge:
-            for req in self.req_queue['add']:
-                if self.rule_backmerge(to_merge, req):
-                    req.length += to_merge.length
-                    req.merged_reqs.append(to_merge)
+    @staticmethod
+    def _frontmerge(to_merge, master):
+        master['offset'] = to_merge['offset']
+        master['length'] += to_merge['length']
+
+    @staticmethod
+    def rule_frontmerge(to_merge, master):
+        return master['dev'] == to_merge['dev'] and \
+            master['offset'] == to_merge['offset'] + to_merge['length']
+
+    def merge_request(self, merge_rule, _merge):
+        _queue = self.queues['queue']
+        _rule = self.rule
+
+        def merge(trace):
+            event = Event(trace, trace_attrs)
+            queue = _queue[event['ops'][0]]
+            # Pop the req to be merged
+            to_merge = queue.req_out(_rule, event)
+            if not to_merge:
+                raise EventDiscarded(event)
+            # Don't pop the master req!
+            for req in queue:
+                if merge_rule(to_merge, req):
+                    _merge(to_merge, req)
+                    req.link('merged', to_merge)
                     return to_merge
-        print('Cannot backmerge req {0}, event {1}'.format(to_merge, event),
-              file=sys.stderr)
+            raise MergeFailed(to_merge, event)
+        return merge
 
-    @classmethod
-    def rule_backmerge(cls, to_merge, dest):
-        return to_merge['dev'] == dest['dev'] \
-            and to_merge.offset == dest.offset + dest.length \
-            and to_merge.op_type_same(dest)
-
-    def frontmerge_request(self, event, info):
-        to_merge = self.req_queue['add'].req_out(self.rule, event)
-
-        if to_merge:
-            for req in self.req_queue['add']:
-                if self.rule_frontmerge(to_merge, req):
-                    req.offset = to_merge.offset
-                    req.length += to_merge.length
-                    req.merged_reqs.append(to_merge)
-                    return to_merge
-        print('Cannot frontmerge req {0}, event {1}'.format(to_merge, event),
-              file=sys.stderr)
-
-    @classmethod
-    def rule_frontmerge(cls, to_merge, dest):
-        return dest['dev'] == to_merge['dev'] \
-            and dest.offset == to_merge.offset + to_merge.length \
-            and to_merge.op_type_same(dest)
-
-    @classmethod
-    def rule(cls, req, event):
-        offset = int(event['sector']) * cls.SECTOR_SIZE
-        length = int(event['nr_sector']) * cls.SECTOR_SIZE
-        dev = event['dev']
-        rwbs = int(event['rwbs'])
-        return req['offset'] == offset and req['length'] == length \
-            and req['dev'] == dev and req.op_type_equal(rwbs)
+    @staticmethod
+    def rule(req, event):
+        return rules.same_pos(req, event) and req['dev'] == event('dev') and \
+            rules.same_op_type(req, event)
 
     @staticmethod
     def is_scsi(self, event):
@@ -113,4 +124,3 @@ class LinuxBlockLayer(BlkLayer):
             cmd_len = event.get('_cmd_length')
             if cmd_len and cmd_len != 0:
                 return True
-        return False

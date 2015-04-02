@@ -36,40 +36,50 @@ class QemuVirtioLayer(BlkLayer):
         super().__init__(name)
         self.trace_handlers = {
             # queue
-            'virtio_blk_handle_write': (
-                ('queue', self.queues['queue']['write']),
+            'virtio_blk_handle_write': self.handler_gen_req(
+                'queue',
                 'qemu_virtio_write',
-                self.trace_attrs_queue_write,
+                dest=self.queues['queue']['write'],
+                attrs=self.trace_attrs_queue_write,
                 ),
-            'virtio_blk_handle_read': (
-                ('queue', self.queues['queue']['read']),
+            'virtio_blk_handle_read': self.handler_gen_req(
+                'queue',
                 'qemu_virtio_read',
-                self.trace_attrs_queue_read,
+                dest=self.queues['queue']['read'],
+                attrs=self.trace_attrs_queue_read,
                 ),
             # submit
             'bdrv_aio_multiwrite': self.submit_write_request,
-            'bdrv_aio_readv': (
-                ('submit', self.queues['submit']),
-                (self.queues['queue']['read'],
-                 rules.same_pos),
-                self.trace_attrs_submit_read,
+            'bdrv_aio_readv': self.handler_mv_req(
+                'submit',
+                dest=self.queues['submit'],
+                src=self.queues['queue']['read'],
+                rule=rules.same_pos,
+                attrs=self.trace_attrs_submit_read,
                 ),
             # finish
-            'virtio_blk_rw_complete': (
+            'virtio_blk_rw_complete': self.handler_mv_req(
                 'finish',
-                (self.queues['submit'], rules.same_id),
-                self.trace_attrs_finish,
+                dest=self.get_queue_req_op('finish'),
+                src=self.queues['submit'],
+                rule=rules.same_id,
+                attrs=self.trace_attrs_finish,
                 ),
             }
-        self.use_default_lower_linker()
+        self.when(
+            'lower', 'queue',
+            self.link_with_lower_from(
+                self.queues['submit'], 'overlaps')
+            )
 
     def submit_write_request(self, trace):
         """
         Read a trace, submit some write requests
         """
+        event = Event(trace)
         for i in range(int(trace['num_callbacks'])):
             req = self.queues['queue']['write'].popleft()
-            self.accept_req(req, Event(trace), 'submit', self.queues['submit'])
+            self.accept_req(req, event, 'submit', self.queues['submit'])
 
     def init_queues(self):
         for t in ['queue', 'finish']:

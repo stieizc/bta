@@ -1,6 +1,3 @@
-import sys
-from collections import deque
-
 from libbta import Event
 from libbta import BlkRequest
 from libbta.request_queue import ReqQueue
@@ -36,6 +33,7 @@ class Layer(Trigger):
         req.add_event(action, event)
         dest.append(req)
         self.trigger(action, req)
+        return req
 
     def relate(self, name, layer):
         self._related[name] = layer
@@ -45,28 +43,28 @@ class Layer(Trigger):
         layer = self._related.get(layer_name)
         if layer:
             return layer.on(action, f)
-        else if f:
+        elif f:
             return f
         else:
             return lambda ff: ff
 
-    def link_reqs_in_queue(self, action, rule, self_type, other_type):
+    def link_reqs_in_queue(self, queue, rule, self_type, other_type):
         def find_and_link_with(r):
-            queue = self.get_queue(action, r)
-            for req in queue:
-                rule = getattr(req, rule)
-                if rule(r):
+            _queue = queue(r) if callable(queue) else queue
+            for req in _queue:
+                _rule = getattr(req, rule)
+                if _rule(r):
                     req.link(self_type, r)
                     r.link(other_type, req)
         return find_and_link_with
 
-    def link_reqs_with_lower(self, action, rule):
+    def link_with_lower_from(self, queue, rule):
         return self.link_reqs_in_queue(
-            action, rule, self_type='lower', other_type='upper')
+            queue, rule, self_type='lower', other_type='upper')
 
-    def link_reqs_with_upper(self, action, rule):
+    def link_with_upper_from(self, queue, rule):
         return self.link_reqs_in_queue(
-            action, rule, self_type='upper', other_type='lower')
+            queue, rule, self_type='upper', other_type='lower')
 
     def __repr__(self):
         return self.name
@@ -82,6 +80,29 @@ class BlkLayer(Layer):
     def __init__(self, name):
         super().__init__(name)
         self.init_queues()
+
+    def handler_gen_req(self, action, name, dest, attrs=None,
+                        discard=None):
+        def handler(trace):
+            event = Event(trace, attrs)
+            if discard and discard(event):
+                raise EventDiscarded(event)
+            req = BlkRequest(name, event)
+            _dest = dest(req) if callable(dest) else dest
+            return self.accept_req(req, event, action, _dest)
+        return handler
+
+    def handler_mv_req(self, action, dest, src, rule, attrs=None,
+                       discard=None):
+        def handler(trace):
+            event = Event(trace, attrs)
+            if discard and discard(event):
+                raise EventDiscarded(event)
+            _src = src(event) if callable(src) else src
+            req = _src.req_out(rule, event)
+            _dest = dest(req) if callable(dest) else dest
+            return self.accept_req(req, event, action, _dest)
+        return handler
 
     def read_trace(self, trace):
         """
@@ -99,48 +120,12 @@ class BlkLayer(Layer):
                    info['type'] as handler name
         """
         handler = self.trace_handlers.get(trace.name)
-        if callable(handler):
-            handler(trace)
-        elif type(handler) == tuple:
-            self.handle_trace(trace, *handler)
+        if handler:
+            return handler(trace)
 
-    def handle_trace(self, trace, action, info, attrs_map=None):
-        # First generate event from trace
-        event = Event(trace, attrs_map)
-
-        # Then find the destination
-        if type(action) == tuple:
-            action, dest = action
-            if callable(dest):
-                dest = dest(action, event)
-        else:
-            dest = self.get_queue(action, event)
-
-        if action == 'queue':
-            return self.queue_request(event, info, dest=dest)
-        else:
-            return self.queue_req_mv(event, action, info, dest=dest)
-
-    def queue_request(self, event, name, dest):
-        req = BlkRequest(name, event)
-        self.accept_req(req, event, 'queue', dest)
-        return req
-
-    def queue_req_mv(self, event, action, info, dest):
-        """
-        Move one request from one queue to another, and set event according
-        to action.
-        """
-        req = self.queue_req_out(event, *info)
-        self.accept_req(req, event, action, dest)
-        return req
-
-    def queue_req_out(self, event, src, rule):
-        if callable(src):
-            src = src(event)
-        elif type(src) == str:
-            src = self.get_queue(src, event)
-        return src.req_out(rule, event)
+    def get_queue_req_op(self, name):
+        queue = self.queues[name]
+        return lambda req: queue[req['ops'][0]]
 
     @classmethod
     def sec2byte(cls, n):
@@ -149,17 +134,3 @@ class BlkLayer(Layer):
     def init_queues(self):
         for t in self.EVENT_TYPES:
             self.queues[t] = {'read': ReqQueue(), 'write': ReqQueue()}
-
-    def get_queue(self, action, event):
-        return self.get_queue_by_event_op(action, event)
-
-    def get_queue_by_event_op(self, action, event):
-        # Note event could be generate from trace or just a request
-        return self.get_queue_by_op(action, event['ops'][0])
-
-    def get_queue_by_op(self, action, op_type):
-        return self.queues[action][op_type]
-
-    def use_default_lower_linker(self):
-        self.when('lower', 'queue',
-                  self.link_reqs_with_lower('submit', 'overlaps'))
