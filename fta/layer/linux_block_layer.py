@@ -12,8 +12,10 @@ trace_attrs = {
     'dev': 'dev', 'ops': ('rwbs', rwbs.parse_bio),
     }
 
-trace_attrs_submit_finish = trace_attrs.copy()
-trace_attrs_submit_finish['cmd_length'] = ('_cmd_length', int)
+trace_attrs_submit_finish = {
+    'cmd_length': ('_cmd_length', int),
+    }
+trace_attrs_submit_finish.update(trace_attrs)
 
 
 class LinuxBlockLayer(BlkLayer):
@@ -122,6 +124,5 @@ class LinuxBlockLayer(BlkLayer):
     @staticmethod
     def is_scsi(event):
         if event['length'] == 0:
-            cmd_len = event.get('cmd_length')
-            if cmd_len and cmd_len != 0:
+            if event['cmd_length'] != 0:
                 return True

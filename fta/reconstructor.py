@@ -50,6 +50,6 @@ class Reconstructor:
                 try:
                     layer.read_trace(trace)
                 except EventDiscardedOnPurpose as e:
-                    print(e)
+                    print(str(e))
                 except EventDiscarded as e:
-                    print(e)
+                    print(str(e))
