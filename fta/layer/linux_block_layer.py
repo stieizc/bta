@@ -29,11 +29,12 @@ class LinuxBlockLayer(BlkLayer):
         super().__init__(name)
         self.trace_handlers = {
             'block_bio_queue': self.handler_gen_req(
+                'queue',
                 'block_bio',
                 dest=self.get_queue_req_op('queue'),
                 attrs=trace_attrs,
                 ),
-            'block_rq_issue': self.handler_mv_req_with_discard(
+            'block_rq_issue': self.handler_mv_req(
                 'submit',
                 dest=self.get_queue_req_op('submit'),
                 src=self.get_queue_req_op('queue'),
@@ -41,7 +42,7 @@ class LinuxBlockLayer(BlkLayer):
                 attrs=trace_attrs_submit_finish,
                 discard=self.is_scsi,
                 ),
-            'block_rq_complete': self.handler_mv_req_with_discard(
+            'block_rq_complete': self.handler_mv_req(
                 'finish',
                 dest=self.get_queue_req_op('finish'),
                 src=self.get_queue_req_op('submit'),

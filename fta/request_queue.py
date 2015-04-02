@@ -1,3 +1,4 @@
+from collections import deque
 from .exceptions import EventDiscarded
 
 
@@ -10,4 +11,4 @@ class ReqQueue(deque):
             if critique(req, event):
                 del self[idx]
                 return req
-    raise EventDiscarded(event)
+        raise EventDiscarded(event)

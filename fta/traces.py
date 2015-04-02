@@ -1,14 +1,14 @@
 import os
 
 from fta.cache import Cache
-from fta.parser import TraceParser
+from fta.parser import parse_traces
 from fta.reconstructor import Reconstructor
 
 
 class Traces:
     def __init__(self, config):
         self.config = config
-        self.parsers, self.trace_files = \
+        self.trace_files_per_parser, self.trace_files = \
             self.parser_map_traces(config['trace_dir'], config['parsers'])
         self.cache = Cache(config['cache_dir'])
         self.cache.add('traces', self.trace_files)
@@ -18,7 +18,7 @@ class Traces:
     def load_traces(self):
         traces = self._load('traces')
         if not traces:
-            traces = self.parse_traces()
+            traces = parse_traces(self.trace_files_per_parser)
             self.cache['traces'] = traces
         return traces
 
@@ -29,9 +29,6 @@ class Traces:
             self.cache['requests'] = requests
         return requests
 
-    def parse_traces(self):
-        return TraceParser(self.parsers).parse()
-
     @staticmethod
     def parser_map_traces(trace_dir, parsers_ext):
         if type(trace_dir) is not list:
@@ -39,9 +36,10 @@ class Traces:
                          in os.listdir(trace_dir)]
 
         trace_files = []
-        parsers = {v: [] for v in parsers_ext.itervalues()}
+        parsers = {v: [] for v in parsers_ext.values()}
         for f in trace_dir:
-            _, ext = os.path.splitext(f)
+            _, _, ext = f.rpartition('.')
+            print(ext)
             try:
                 parsers[parsers_ext[ext]].append(f)
                 trace_files.append(f)
@@ -53,10 +51,10 @@ class Traces:
         return self.cache[name]
 
     @staticmethod
-    def gen_layers(self, layerconf):
+    def gen_layers(layerconf):
         layers = []
         upper = None
-        for name, attrs in self.configs.layers:
+        for name, attrs in layerconf:
             layer = attrs['class'](name)
             if upper:
                 upper.relate('lower', layer)

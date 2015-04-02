@@ -22,6 +22,7 @@ class Layer(Trigger):
     """
 
     def __init__(self, name):
+        super().__init__()
         self.name = name
         self.queues = {}
         self._related = {}

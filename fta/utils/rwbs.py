@@ -18,7 +18,7 @@ def parse_qemu_aio(rwbs):
 
 def parse(rwbs, flags):
     ops = []
-    for bit, name in bio.iteritems():
+    for bit, name in bio.items():
         if (bit & rwbs):
             actions.append(name)
     return ops

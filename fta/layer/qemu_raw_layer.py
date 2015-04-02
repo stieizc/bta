@@ -1,6 +1,6 @@
 from . import BlkLayer
 from . import rules
-from fta import ReqQueue
+from fta.request_queue import ReqQueue
 from fta.utils import rwbs
 
 

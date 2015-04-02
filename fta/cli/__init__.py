@@ -41,6 +41,6 @@ def main(ctx, conf, cwd, cache_dir, trace_dir):
 @main.command()
 @pass_traces
 def list(traces):
-    for event in traces.load():
-        click.echo(event)
+    for trace in traces.load_traces():
+        click.echo(trace)
     return

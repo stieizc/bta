@@ -1,6 +1,3 @@
-from collections import deque
-
-
 class Event(dict):
     """
     Basic unit of a trace file and an analysis
@@ -17,7 +14,7 @@ class Event(dict):
         return "{0} {1}".format(super().__repr__(), self.event)
 
     def filter_trace(self, attrs_map):
-        for t_attr, attr in attrs_map.iteritems():
+        for t_attr, attr in attrs_map.items():
             if type(attr) == tuple:
                 attr, _map = attr
                 self[t_attr] = _map(self.trace[attr])

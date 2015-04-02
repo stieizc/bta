@@ -5,7 +5,7 @@ from fta.layer.qemu_raw_layer import QemuRawLayer
 from fta.layer.linux_block_layer import LinuxBlockLayer
 
 config = {
-    'parsers': ['babel', Babeltrace],
+    'parsers': {'babel': Babeltrace},
 
     'layers': [
         ('guest_blk',

@@ -14,10 +14,6 @@ class Reader:
     def read(self):
         """Read contents from self.filepath"""
         config = self.import_config()
-        for k in ['parsers', 'layers', 'deducers']:
-            v = config[k]
-            if type(v) is not list:
-                config[k] = [v]
         return config
 
     def import_config(self):
@@ -26,6 +22,3 @@ class Reader:
         configmod = importlib.import_module(modname)
         sys.path.pop()
         return configmod.config
-
-    def __repr__(self):
-        return "Layers:\n{0}\nDeduers:\n{1}".format(self.layers, self.deducers)
