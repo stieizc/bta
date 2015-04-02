@@ -3,6 +3,8 @@ class Event(dict):
     Basic unit of a trace file and an analysis
     """
     def __init__(self, trace, attrs_map=None):
+        self.name = trace['name']
+        self.timestamp = trace['timestamp']
         self.trace = trace
         if attrs_map:
             self.filter_trace(attrs_map)
@@ -11,18 +13,21 @@ class Event(dict):
         """
         Internal Printing
         """
-        return "{0} {1}".format(super().__repr__(), self.event)
+        return "{0} {1} {2} {3}".format(self.name, self.timestamp, super().__repr__(), self.trace)
 
     def filter_trace(self, attrs_map):
         for t_attr, attr in attrs_map.items():
-            if type(attr) == tuple:
+            if t_attr == 'additional':
+                for k, v in attr:
+                    self[k] = v
+            elif type(attr) == tuple:
                 attr, _map = attr
                 self[t_attr] = _map(self.trace[attr])
             else:
                 self[t_attr] = self.trace[attr]
 
 
-class Request:
+class Request(dict):
     """
     Basic unit of analysis
 
@@ -34,14 +39,11 @@ class Request:
         self.name = name
         self.related = {'upper': [], 'lower': [], 'merged': []}
         self.events = {}
-        self.generator = generator
+        self.update(generator)
 
     def __repr__(self):
-        return "{0}: {1}\n{2}".format(
-            self.name, super().__repr__(), "\n".join(self.events))
-
-    def __getitem__(self, item):
-        return self.generator[item]
+        return "{0}:\n{1}".format(
+            self.name, "\n".join([str(item) for item in self.events.items()]))
 
     def add_event(self, name, event):
         self.events[name] = event

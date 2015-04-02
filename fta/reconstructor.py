@@ -1,3 +1,8 @@
+import sys
+from fta.exceptions import EventDiscarded
+from fta.exceptions import EventDiscardedOnPurpose
+
+
 class Reconstructor:
     """
     From a list of traces, reconstruct requests for different layers.
@@ -37,10 +42,14 @@ class Reconstructor:
     def read(self, traces):
         for trace in traces:
             self.dispatch(trace)
-        for layer, _ in self.layers:
-            print(layer)
+        return [layer for layer, _ in self.layers]
 
     def dispatch(self, trace):
         for layer, domains in self.layers:
             if trace['domain'] in domains:
-                layer.read_trace(trace)
+                try:
+                    layer.read_trace(trace)
+                except EventDiscardedOnPurpose as e:
+                    print(e)
+                except EventDiscarded as e:
+                    print(e)

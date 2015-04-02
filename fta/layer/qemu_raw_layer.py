@@ -4,6 +4,17 @@ from fta.request_queue import ReqQueue
 from fta.utils import rwbs
 
 
+trace_attrs_queue = {
+    'id': 'acb', 'offset': ('sector_num', BlkLayer.sec2byte),
+    'length': ('nb_sectors', BlkLayer.sec2byte),
+    'ops': ('type', rwbs.parse_qemu_aio)
+    }
+trace_attrs_submit = {
+    'id': 'aiocb', 'offset': ('aiocb__aio_offset', int),
+    'length': ('aiocb__aio_nbytes', int)
+    }
+
+
 class QemuRawLayer(BlkLayer):
     """
     Layer for Qemu's Raw File Backend
@@ -15,16 +26,6 @@ class QemuRawLayer(BlkLayer):
     actually finished but never marked so.
     """
 
-    trace_attrs_queue = {
-        'id': 'acb', 'offset': ('sector_num', BlkLayer.sec2byte),
-        'length': ('nb_sectors', BlkLayer.sec2byte),
-        'ops': ('type', rwbs.parse_qemu_aio)
-        }
-    trace_attrs_submit = {
-        'id': 'aiocb', 'offset': ('aiocb__aio_offset', BlkLayer.sec2byte),
-        'length': ('aiocb__aio_nbytes', BlkLayer.sec2byte)
-        }
-
     def __init__(self, name):
         super().__init__(name)
         self.trace_handlers = {
@@ -32,14 +33,14 @@ class QemuRawLayer(BlkLayer):
                 'queue',
                 'qemu_raw_rw',
                 dest=self.queues['queue'],
-                attrs=self.trace_attrs_queue,
+                attrs=trace_attrs_queue,
                 ),
             'handle_aiocb_rw': self.handler_mv_req(
                 'submit',
                 dest=self.get_queue_req_op('submit'),
                 src=self.queues['queue'],
                 rule=self.rule_submit,
-                attrs=self.trace_attrs_submit,
+                attrs=trace_attrs_submit,
                 ),
             }
         self.when(

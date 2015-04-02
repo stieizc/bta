@@ -2,6 +2,7 @@ from fta import Event
 from fta import BlkRequest
 from fta.request_queue import ReqQueue
 from fta.exceptions import EventDiscarded
+from fta.exceptions import EventDiscardedOnPurpose
 from fta.utils.trigger import Trigger
 
 
@@ -87,7 +88,7 @@ class BlkLayer(Layer):
         def handler(trace):
             event = Event(trace, attrs)
             if discard and discard(event):
-                raise EventDiscarded(event)
+                raise EventDiscardedOnPurpose(event)
             req = BlkRequest(name, event)
             _dest = dest(req) if callable(dest) else dest
             return self.accept_req(req, event, action, _dest)
@@ -98,7 +99,7 @@ class BlkLayer(Layer):
         def handler(trace):
             event = Event(trace, attrs)
             if discard and discard(event):
-                raise EventDiscarded(event)
+                raise EventDiscardedOnPurpose(event)
             _src = src(event) if callable(src) else src
             req = _src.req_out(rule, event)
             _dest = dest(req) if callable(dest) else dest
@@ -109,18 +110,8 @@ class BlkLayer(Layer):
         """
         Read a trace, pass it to *a* proper handler, if any. So a trace only
         gets handled once.
-
-        info is a object passed as argument to standard handlers. If it has a
-        handler field, then that handler is called instead.
-
-        Directly needed entries of info are:
-        'type': see 'handler'
-
-        Optional entries:
-        'handler': if has one, use it as the handler name; otherwise use
-                   info['type'] as handler name
         """
-        handler = self.trace_handlers.get(trace.name)
+        handler = self.trace_handlers.get(trace['name'])
         if handler:
             return handler(trace)
 

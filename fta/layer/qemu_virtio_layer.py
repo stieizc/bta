@@ -8,30 +8,30 @@ trace_attrs_queue = {
     'length': ('nsectors', BlkLayer.sec2byte)
     }
 
+trace_attrs_queue_write = {
+    'additional': [('ops', ['write'])]
+    }
+trace_attrs_queue_write.update(trace_attrs_queue)
+
+trace_attrs_queue_read = {
+    'additional': [('ops', ['read'])]
+    }
+trace_attrs_queue_read.update(trace_attrs_queue)
+
+trace_attrs_submit_read = {
+    'offset': ('sector_num', BlkLayer.sec2byte),
+    'length': ('nb_sectors', BlkLayer.sec2byte),
+    }
+
+trace_attrs_finish = {
+    'id': 'req'
+    }
+
 
 class QemuVirtioLayer(BlkLayer):
     """
     Layer for Qemu's Virtio
     """
-
-    trace_attrs_queue_write = {
-        'additonal': {'ops': ['write']}
-        }.update(trace_attrs_queue)
-
-    trace_attrs_queue_read = {
-        'additonal': {'ops': ['read']}
-        }.update(trace_attrs_queue)
-
-    trace_attrs_submit_read = {
-        'offset': ('sector_num', BlkLayer.sec2byte),
-        'length': ('nb_sectors', BlkLayer.sec2byte),
-        'additonal': {'ops': ['read']}
-        }
-
-    trace_attrs_finish = {
-        'id': 'req'
-        }
-
     def __init__(self, name):
         super().__init__(name)
         self.trace_handlers = {
@@ -40,13 +40,13 @@ class QemuVirtioLayer(BlkLayer):
                 'queue',
                 'qemu_virtio_write',
                 dest=self.queues['queue']['write'],
-                attrs=self.trace_attrs_queue_write,
+                attrs=trace_attrs_queue_write,
                 ),
             'virtio_blk_handle_read': self.handler_gen_req(
                 'queue',
                 'qemu_virtio_read',
                 dest=self.queues['queue']['read'],
-                attrs=self.trace_attrs_queue_read,
+                attrs=trace_attrs_queue_read,
                 ),
             # submit
             'bdrv_aio_multiwrite': self.submit_write_request,
@@ -55,7 +55,7 @@ class QemuVirtioLayer(BlkLayer):
                 dest=self.queues['submit'],
                 src=self.queues['queue']['read'],
                 rule=rules.same_pos,
-                attrs=self.trace_attrs_submit_read,
+                attrs=trace_attrs_submit_read,
                 ),
             # finish
             'virtio_blk_rw_complete': self.handler_mv_req(
@@ -63,7 +63,7 @@ class QemuVirtioLayer(BlkLayer):
                 dest=self.get_queue_req_op('finish'),
                 src=self.queues['submit'],
                 rule=rules.same_id,
-                attrs=self.trace_attrs_finish,
+                attrs=trace_attrs_finish,
                 ),
             }
         self.when(

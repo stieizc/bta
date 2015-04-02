@@ -1,6 +1,5 @@
 def parse_traces(parsers):
     trace_queues = []
-    print(parsers)
     for parser, files in parsers.items():
         if files:
             trace_queues.extend(parser.parse_files(files))

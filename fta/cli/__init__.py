@@ -38,9 +38,13 @@ def main(ctx, conf, cwd, cache_dir, trace_dir):
     ctx.obj = Traces(config)
 
 
-@main.command()
+@main.command('show-traces', help='Show all traces')
 @pass_traces
 def list(traces):
     for trace in traces.load_traces():
         click.echo(trace)
-    return
+
+@main.command(help='Reconstruct requests in each layer')
+@pass_traces
+def reconstruct(traces):
+    traces.reconstruct()

@@ -71,7 +71,7 @@ class LinuxBlockLayer(BlkLayer):
             if not merged_reqs:
                 return
             event = master_req.events['finish']
-            dest = self.queues['finish'][master_req.op_type]
+            dest = self.queues['finish'][master_req['ops'][0]]
             for req in merged_reqs:
                 self.accept_req(req, event, 'finish', dest)
 
@@ -116,12 +116,12 @@ class LinuxBlockLayer(BlkLayer):
 
     @staticmethod
     def rule(req, event):
-        return rules.same_pos(req, event) and req['dev'] == event('dev') and \
+        return rules.same_pos(req, event) and req['dev'] == event['dev'] and \
             rules.same_op_type(req, event)
 
     @staticmethod
-    def is_scsi(self, event):
+    def is_scsi(event):
         if event['length'] == 0:
-            cmd_len = event.get('_cmd_length')
+            cmd_len = event.get('cmd_length')
             if cmd_len and cmd_len != 0:
                 return True

@@ -6,16 +6,15 @@ from fta.layer.linux_block_layer import LinuxBlockLayer
 
 config = {
     'parsers': {'babel': Babeltrace},
-
     'layers': [
         ('guest_blk',
-         {'class': LinuxBlockLayer,
-          'domains': ['debian-fstest.kernel']}),
+         LinuxBlockLayer,
+         ['debian-fstest.kernel']),
         ('qemu_virtio',
-         {'class': QemuVirtioLayer,
-          'domains': ['debc.qemu']}),
+         QemuVirtioLayer,
+         ['debc.qemu']),
         ('qemu_raw_backend',
-         {'class': QemuRawLayer,
-          'domains': ['debc.qemu']})
+         QemuRawLayer,
+         ['debc.qemu'])
     ]
 }

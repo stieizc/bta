@@ -12,7 +12,7 @@ class Traces:
             self.parser_map_traces(config['trace_dir'], config['parsers'])
         self.cache = Cache(config['cache_dir'])
         self.cache.add('traces', self.trace_files)
-        self.cache.chain('requests', 'traces')
+        self.cache.chain('layers', 'traces')
         self.layers = self.gen_layers(config['layers'])
 
     def load_traces(self):
@@ -22,12 +22,12 @@ class Traces:
             self.cache['traces'] = traces
         return traces
 
-    def load_requests(self):
-        requests = self._load('requests')
-        if not requests:
-            requests = Reconstructor(self.layers).read(self.load_traces())
-            self.cache['requests'] = requests
-        return requests
+    def reconstruct(self):
+        layers = self._load('layers')
+        if not layers:
+            layers = Reconstructor(self.layers).read(self.load_traces())
+            self.cache['layers'] = layers
+        return layers
 
     @staticmethod
     def parser_map_traces(trace_dir, parsers_ext):
@@ -39,7 +39,6 @@ class Traces:
         parsers = {v: [] for v in parsers_ext.values()}
         for f in trace_dir:
             _, _, ext = f.rpartition('.')
-            print(ext)
             try:
                 parsers[parsers_ext[ext]].append(f)
                 trace_files.append(f)
@@ -54,11 +53,11 @@ class Traces:
     def gen_layers(layerconf):
         layers = []
         upper = None
-        for name, attrs in layerconf:
-            layer = attrs['class'](name)
+        for name, _type, domains in layerconf:
+            layer = _type(name)
             if upper:
                 upper.relate('lower', layer)
                 layer.relate('upper', upper)
             upper = layer
-            layers.append((layer, attrs['domains']))
+            layers.append((layer, domains))
         return layers
