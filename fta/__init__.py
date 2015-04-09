@@ -13,7 +13,8 @@ class Event(dict):
         """
         Internal Printing
         """
-        return "{0} {1} {2} {3}".format(self.name, self.timestamp, super().__repr__(), self.trace)
+        return "{0} {1} {2} {3}".format(
+            self.name, self.timestamp, super().__repr__(), self.trace)
 
     def filter_trace(self, attrs_map):
         for t_attr, attr in attrs_map.items():
@@ -52,6 +53,9 @@ class Request(dict):
         # print("Link {0}\nupper {1}".format(str(self), str(req)))
         self.related[_type].append(req)
 
+    def timestamp(self, name):
+        return self.events[name].timestamp
+
 
 class BlkRequest(Request):
     """
@@ -69,3 +73,13 @@ class BlkRequest(Request):
     def overlaps(self, _dict):
         return self['offset'] <= self.endof(_dict) and \
             _dict['offset'] <= self.endof(self)
+
+    def response_time(self):
+        return self.timestamp('finish') - self.timestamp('queue')
+
+    def lower_response_time(self):
+        qtime = self.timestamp('queue')
+        deltas = [req.timestamp('queue') - qtime
+                  for req in self.events['queue']]
+        return float(sum(deltas))/len(deltas) \
+            if len(deltas) > 0 else float('nan')
