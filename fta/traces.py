@@ -12,8 +12,8 @@ class Traces:
             self.parser_map_traces(config['trace_dir'], config['parsers'])
         self.cache = Cache(config['cache_dir'])
         self.cache.add('traces', self.trace_files)
-        self.cache.chain('layers', 'traces')
-        self.layers = self.gen_layers(config['layers'])
+        self.cache.chain('timelines', 'traces')
+        self.layers = self.gen_layers(config['timelines'])
 
     def load_traces(self):
         traces = self._load('traces')
@@ -23,11 +23,11 @@ class Traces:
         return traces
 
     def reconstruct(self):
-        layers = self._load('layers')
-        if not layers:
-            layers = Reconstructor(self.layers).read(self.load_traces())
-            self.cache['layers'] = layers
-        return layers
+        timelines = self._load('timelines')
+        if not timelines:
+            timelines = Reconstructor(self.layers).read(self.load_traces())
+            self.cache['timelines'] = timelines
+        return timelines
 
     @staticmethod
     def parser_map_traces(trace_dir, parsers_ext):

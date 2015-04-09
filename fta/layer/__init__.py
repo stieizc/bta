@@ -27,6 +27,7 @@ class Layer(Trigger):
         self.name = name
         self.queues = {}
         self._related = {}
+        self.timeline = []
 
     def accept_req(self, req, event, action, dest):
         """
@@ -35,7 +36,7 @@ class Layer(Trigger):
         req.add_event(action, event)
         dest.append(req)
         self.trigger(action, req)
-        return req
+        self.timeline.append((action, req))
 
     def relate(self, name, layer):
         self._related[name] = layer

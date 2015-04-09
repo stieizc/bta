@@ -72,10 +72,12 @@ class LinuxBlockLayer(BlkLayer):
             merged_reqs = master_req.related['merged']
             if not merged_reqs:
                 return
-            event = master_req.events['finish']
+            submit_event = master_req.events['submit']
+            finish_event = master_req.events['finish']
             dest = self.queues['finish'][master_req['ops'][0]]
             for req in merged_reqs:
-                self.accept_req(req, event, 'finish', dest)
+                self.related['submit'] = submit_event
+                self.accept_req(req, finish_event, 'finish', dest)
 
     @staticmethod
     def _backmerge(to_merge, master):
@@ -107,6 +109,7 @@ class LinuxBlockLayer(BlkLayer):
             to_merge = queue.req_out(_rule, event)
             if not to_merge:
                 raise EventDiscarded(event)
+            to_merge.events['merge'] = event
             # Don't pop the master req!
             for req in queue:
                 if merge_rule(to_merge, req):

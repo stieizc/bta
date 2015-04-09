@@ -1,6 +1,7 @@
 import sys
 from fta.exceptions import EventDiscarded
 from fta.exceptions import EventDiscardedOnPurpose
+from fta.exceptions import MergeFailed
 
 
 class Reconstructor:
@@ -34,6 +35,7 @@ class Reconstructor:
     def __init__(self, layers):
         self.layers = layers
         self.ids = []
+        self.discarded = []
 
     def __repr__(self):
         string = '\n'.join([str(l) for l in self.layers])
@@ -42,7 +44,11 @@ class Reconstructor:
     def read(self, traces):
         for trace in traces:
             self.dispatch(trace)
-        return [layer for layer, _ in self.layers]
+        return [
+            ('timelines',
+             [(layer.name, layer.timeline) for layer, _ in self.layers]),
+            ('discarded', self.discarded)
+            ]
 
     def dispatch(self, trace):
         for layer, domains in self.layers:
@@ -50,6 +56,8 @@ class Reconstructor:
                 try:
                     layer.read_trace(trace)
                 except EventDiscardedOnPurpose as e:
-                    print(str(e))
+                    self.discarded.append(('discard on purpose', e.event))
                 except EventDiscarded as e:
-                    print(str(e))
+                    self.discarded.append(('discard', e.event))
+                except MergeFailed as e:
+                    self.discarded.append(('discard', e.req))
