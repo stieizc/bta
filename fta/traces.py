@@ -13,7 +13,7 @@ class Traces:
         self.cache = Cache(config['cache_dir'])
         self.cache.add('traces', self.trace_files)
         self.cache.chain('timelines', 'traces')
-        self.layers = self.gen_layers(config['timelines'])
+        self.layers = self.gen_layers(config['layers'])
 
     def load_traces(self):
         traces = self._load('traces')

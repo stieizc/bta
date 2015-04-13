@@ -27,8 +27,9 @@ def main(ctx, conf, cwd, cache_dir, trace_dir):
     """
     Block trace analyser
     """
+    conf = os.path.realpath(conf)
     if not cwd:
-        cwd = os.path.dirname(os.path.realpath(conf))
+        cwd = os.path.dirname(conf)
     os.chdir(cwd)
     config = {'cache_dir': cache_dir, 'trace_dir': trace_dir}
     config = Config(conf).read(default=config)
