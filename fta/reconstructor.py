@@ -36,6 +36,7 @@ class Reconstructor:
         self.layers = layers
         self.ids = []
         self.discarded = []
+        self.timeline = []
 
     def __repr__(self):
         string = '\n'.join([str(l) for l in self.layers])
@@ -43,10 +44,11 @@ class Reconstructor:
 
     def read(self, traces):
         for trace in traces:
-            self.dispatch(trace)
+            self.timeline.append(self.dispatch(trace))
         return [
             ('timelines',
-             [(layer.name, layer.timeline) for layer, _ in self.layers]),
+             [(layer.name, layer.timeline) for layer, _ in
+              self.layers].append(('all', self.timeline))),
             ('discarded', self.discarded)
             ]
 
@@ -54,10 +56,16 @@ class Reconstructor:
         for layer, domains in self.layers:
             if trace['domain'] in domains:
                 try:
-                    layer.read_trace(trace)
+                    return (layer.name, layer.read_trace(trace))
                 except EventDiscardedOnPurpose as e:
-                    self.discarded.append(('discard on purpose', e.event))
+                    return (layer.name,
+                            self._dispatch_error(('discard on purpose', e.event)))
                 except EventDiscarded as e:
-                    self.discarded.append(('discard', e.event))
+                    return (layer.name, self._dispatch_error(('discard', e.event)))
                 except MergeFailed as e:
-                    self.discarded.append(('discard', e.req))
+                    return (layer.name,
+                            self._dispatch_error(('merge failed', e.req, e.event)))
+
+    def _dispatch_error(self, tl):
+        self.discarded.append(tl)
+        return tl

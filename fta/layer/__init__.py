@@ -36,7 +36,9 @@ class Layer(Trigger):
         req.add_event(action, event)
         dest.append(req)
         self.trigger(action, req)
-        self.timeline.append((action, req))
+        tline = (action, req)
+        self.timeline.append(tline)
+        return tline
 
     def relate(self, name, layer):
         self._related[name] = layer
